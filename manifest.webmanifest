@@ -1,0 +1,14 @@
+{
+  "name": "Archivio Chat WhatsApp",
+  "short_name": "Archivio WA",
+  "description": "Visualizzatore offline di chat WhatsApp esportate, con archivio persistente sul dispositivo.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#efe7dd",
+  "theme_color": "#008069",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

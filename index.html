@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#008069">
+<title>Archivio Chat WhatsApp</title>
+<link rel="manifest" href="manifest.webmanifest">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --hdr:#008069; --hdr-dark:#006a56; --bg:#efe7dd; --me:#d9fdd3; --other:#ffffff;
+    --ink:#111b21; --muted:#667781; --pill:#ffffff; --sys:#fdf3c5; --bar:#f0f2f5;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;font-family:-apple-system,Roboto,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--ink);display:flex;flex-direction:column;height:100dvh;background:var(--bg)}
+  button{font:inherit;cursor:pointer}
+
+  header{background:var(--hdr);color:#fff;display:flex;align-items:center;gap:4px;padding:10px 8px 10px 8px;flex:0 0 auto;box-shadow:0 1px 3px rgba(0,0,0,.25);z-index:20}
+  #hdrMain{flex:1;min-width:0;padding-left:6px}
+  #hdrTitle{font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #hdrSub{font-size:12px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .iconBtn{background:none;border:none;color:#fff;padding:8px;border-radius:50%;line-height:0}
+  .iconBtn:active{background:rgba(255,255,255,.15)}
+  .iconBtn svg{width:22px;height:22px;fill:currentColor}
+  .chatOnly{display:none}
+  body.inChat .chatOnly{display:block}
+  body.inChat #btnBack{display:block}
+  #btnBack{display:none}
+
+  .bar{background:var(--bar);border-bottom:1px solid #d7dbdf;padding:8px 10px;display:flex;align-items:center;gap:8px;flex:0 0 auto;z-index:19}
+  .bar[hidden]{display:none}
+  .bar input[type=search]{flex:1;min-width:0;border:1px solid #cfd6db;border-radius:18px;padding:7px 14px;font-size:15px;background:#fff}
+  .bar select{flex:1;min-width:0;border:1px solid #cfd6db;border-radius:8px;padding:7px 8px;font-size:15px;background:#fff}
+  .bar .small{background:#fff;border:1px solid #cfd6db;border-radius:8px;padding:7px 10px;font-size:14px}
+  .bar .cnt{font-size:13px;color:var(--muted);min-width:44px;text-align:center}
+
+  #whoBar{background:#fff8e1;border-bottom:1px solid #eadfb8;padding:8px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:14px}
+  #whoBar[hidden]{display:none}
+  .chip{border:1px solid var(--hdr);color:var(--hdr);background:#fff;border-radius:16px;padding:5px 12px;font-size:14px}
+  .chip:active{background:#e6f4f1}
+
+  #menuSheet{position:absolute;top:54px;right:8px;background:#fff;border-radius:10px;box-shadow:0 4px 18px rgba(0,0,0,.3);padding:6px 0;z-index:30;min-width:240px}
+  #menuSheet[hidden]{display:none}
+  #menuSheet .mi{display:block;width:100%;text-align:left;background:none;border:none;padding:12px 16px;font-size:15px}
+  #menuSheet .mi:active{background:#f0f2f5}
+  #menuSheet .sec{padding:10px 16px 4px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  #menuSheet select{margin:2px 16px 8px;width:calc(100% - 32px);padding:6px;border:1px solid #cfd6db;border-radius:6px;font-size:14px}
+
+  /* ---- Home ---- */
+  #home{flex:1;overflow-y:auto;background:#fff;display:flex;flex-direction:column}
+  body.inChat #home{display:none}
+  #chatList{flex:1}
+  .card{display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:1px solid #f0f2f5}
+  .card:active{background:#f5f6f6}
+  .avatar{width:48px;height:48px;border-radius:50%;background:var(--hdr);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;flex:0 0 auto}
+  .cMain{flex:1;min-width:0}
+  .cName{font-size:16px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cSub{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+  .cDel{background:none;border:none;color:#8696a0;padding:10px;line-height:0}
+  .cDel svg{width:20px;height:20px;fill:currentColor}
+  #emptyHome{text-align:center;color:var(--muted);padding:60px 30px;font-size:14.5px;line-height:1.5}
+  #emptyHome b{color:var(--hdr-dark)}
+  #fab{position:fixed;right:18px;bottom:22px;width:58px;height:58px;border-radius:16px;background:var(--hdr);color:#fff;border:none;box-shadow:0 3px 10px rgba(0,0,0,.3);font-size:26px;z-index:18}
+  body.inChat #fab{display:none}
+  #homeHint{padding:10px 16px 90px;font-size:12px;color:#8696a0;text-align:center}
+
+  /* ---- Chat ---- */
+  main{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:6px 0 16px;-webkit-overflow-scrolling:touch;display:none}
+  body.inChat main{display:block}
+
+  .sep{width:fit-content;margin:14px auto 6px;background:var(--pill);color:#54656f;font-size:12.5px;padding:5px 12px;border-radius:8px;box-shadow:0 1px 1px rgba(0,0,0,.08)}
+  .sys{width:fit-content;max-width:86%;margin:6px auto;background:var(--sys);color:#54656f;font-size:12.5px;padding:6px 12px;border-radius:8px;text-align:center;box-shadow:0 1px 1px rgba(0,0,0,.08)}
+
+  .row{display:flex;padding:1px 10px}
+  .row.me{justify-content:flex-end}
+  .bubble{max-width:86%;background:var(--other);border-radius:9px;padding:5px 8px 6px;box-shadow:0 1px 1px rgba(0,0,0,.1);position:relative;font-size:14.6px;line-height:1.35;word-wrap:break-word;overflow-wrap:break-word}
+  .row.me .bubble{background:var(--me)}
+  .row.grp .bubble{margin-top:6px}
+  .sender{font-size:12.8px;font-weight:600;margin-bottom:1px}
+  .txt a{color:#027eb5;word-break:break-all}
+  .time{font-size:10.5px;color:#8696a0;text-align:right;margin-top:1px;margin-left:12px;float:right;position:relative;top:4px}
+  .bubble.flash{animation:fl 1.6s ease}
+  @keyframes fl{0%,60%{box-shadow:0 0 0 3px #ffab00}100%{box-shadow:0 1px 1px rgba(0,0,0,.1)}}
+  @media (prefers-reduced-motion: reduce){.bubble.flash{animation:none;box-shadow:0 0 0 3px #ffab00}}
+
+  .media{margin:2px 0 4px}
+  .media img,.media video{max-width:min(68vw,280px);max-height:340px;border-radius:7px;display:block;background:#dfe5e7}
+  .media audio{width:min(68vw,280px);height:40px}
+  .ph{width:min(60vw,240px);height:150px;border-radius:7px;background:#e9edef;color:#8696a0;display:flex;align-items:center;justify-content:center;font-size:13px;gap:6px}
+  .mediaBtn{display:flex;align-items:center;gap:8px;background:#f0f2f5;border:1px solid #dfe5e7;border-radius:8px;padding:9px 12px;font-size:13.5px;color:#111b21;max-width:min(68vw,280px);text-align:left}
+  .mediaBtn .ic{font-size:18px;line-height:1}
+  .missing{font-size:12.5px;color:#8696a0;font-style:italic;padding:2px 0}
+  .omitted{font-size:13px;color:#8696a0;font-style:italic}
+
+  #dateChip{position:fixed;left:50%;transform:translateX(-50%);top:64px;background:#ffffffee;color:#54656f;font-size:12.5px;padding:5px 12px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.2);z-index:15;opacity:0;transition:opacity .25s;pointer-events:none}
+  #dateChip.show{opacity:1}
+
+  #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:50;display:flex;align-items:center;justify-content:center}
+  #lightbox[hidden]{display:none}
+  #lightbox img{max-width:100vw;max-height:100dvh;object-fit:contain}
+
+  #overlay{position:fixed;inset:0;background:rgba(255,255,255,.94);z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-size:15px;color:var(--hdr-dark);text-align:center;padding:20px}
+  #overlay[hidden]{display:none}
+  .spin{width:36px;height:36px;border:4px solid #cde9e2;border-top-color:var(--hdr);border-radius:50%;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  :focus-visible{outline:2px solid #ffab00;outline-offset:2px}
+</style>
+</head>
+<body>
+
+<header>
+  <button class="iconBtn" id="btnBack" title="Indietro" aria-label="Indietro">
+    <svg viewBox="0 0 24 24"><path d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20v-2z"/></svg>
+  </button>
+  <div id="hdrMain">
+    <div id="hdrTitle">Archivio chat WhatsApp</div>
+    <div id="hdrSub">le tue chat esportate, salvate sul dispositivo</div>
+  </div>
+  <button class="iconBtn chatOnly" id="btnSearch" title="Cerca" aria-label="Cerca">
+    <svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 1 0-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg>
+  </button>
+  <button class="iconBtn chatOnly" id="btnJump" title="Vai a data" aria-label="Vai a data">
+    <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V10h14v10zM5 8V6h14v2H5z"/></svg>
+  </button>
+  <button class="iconBtn chatOnly" id="btnMenu" title="Menu" aria-label="Menu">
+    <svg viewBox="0 0 24 24"><path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
+  </button>
+</header>
+
+<div class="bar" id="searchBar" hidden>
+  <input type="search" id="searchInput" placeholder="Cerca nella chat…" autocomplete="off">
+  <span class="cnt" id="searchCnt">–</span>
+  <button class="small" id="searchPrev" aria-label="Risultato precedente">▲</button>
+  <button class="small" id="searchNext" aria-label="Risultato successivo">▼</button>
+  <button class="small" id="searchClose" aria-label="Chiudi ricerca">✕</button>
+</div>
+
+<div class="bar" id="jumpBar" hidden>
+  <select id="monthSel" aria-label="Vai al mese"></select>
+  <button class="small" id="goStart">Inizio</button>
+  <button class="small" id="goEnd">Fine</button>
+  <button class="small" id="jumpClose" aria-label="Chiudi">✕</button>
+</div>
+
+<div id="whoBar" hidden>
+  <span>Tu sei:</span>
+  <span id="whoChips"></span>
+</div>
+
+<div id="menuSheet" hidden>
+  <div class="sec">Io sono</div>
+  <select id="meSel"></select>
+  <div class="sec">Formato data del file</div>
+  <button class="mi" id="fmtToggle">Giorno/Mese (gg/mm) ✓</button>
+  <div class="sec">Chat</div>
+  <button class="mi" id="addMedia">Aggiungi media…</button>
+  <button class="mi" id="renameChat">Rinomina chat…</button>
+</div>
+
+<div id="home">
+  <div id="chatList"></div>
+  <div id="emptyHome" hidden>
+    <p><b>Nessuna chat in archivio.</b></p>
+    <p>Tocca <b>+</b> e apri il file <b>.zip</b> esportato da WhatsApp (con media) oppure il solo <b>.txt</b>.<br>La chat viene salvata sul dispositivo: da qui in poi la ritrovi sempre in questa lista, media compresi.</p>
+    <p style="font-size:12px">WhatsApp → chat → ⋮ → Altro → Esporta chat</p>
+  </div>
+  <div id="homeHint">Tutto resta in locale sul tuo dispositivo: nessun dato viene inviato a server.</div>
+</div>
+<button id="fab" title="Importa export" aria-label="Importa export">＋</button>
+
+<main id="chat">
+  <div id="topSentinel"></div>
+  <div id="msgs"></div>
+  <div id="bottomSentinel"></div>
+</main>
+
+<div id="dateChip"></div>
+<div id="lightbox" hidden><img id="lightboxImg" alt=""></div>
+<div id="overlay" hidden><div class="spin"></div><div id="overlayTxt">Caricamento…</div></div>
+
+<input type="file" id="fileInput" accept=".zip,.txt,text/plain,application/zip" hidden>
+<input type="file" id="mediaInput" multiple hidden>
+
+<script>
+"use strict";
+/* ================= IndexedDB ================= */
+let db = null;
+function openDB(){
+  return new Promise((res, rej) => {
+    const rq = indexedDB.open("waArchivio", 1);
+    rq.onupgradeneeded = () => {
+      const d = rq.result;
+      d.createObjectStore("chats", { keyPath: "id" });
+      d.createObjectStore("msgs", { keyPath: "id" });
+      d.createObjectStore("media", { keyPath: ["chat", "name"] }).createIndex("chat", "chat");
+    };
+    rq.onsuccess = () => res(rq.result);
+    rq.onerror = () => rej(rq.error);
+  });
+}
+function tx(store, mode, fn){
+  return new Promise((res, rej) => {
+    const t = db.transaction(store, mode);
+    const s = t.objectStore(store);
+    const out = fn(s);
+    t.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
+    t.onerror = () => rej(t.error);
+  });
+}
+const dbPut = (store, val) => tx(store, "readwrite", s => s.put(val));
+const dbDel = (store, key) => tx(store, "readwrite", s => s.delete(key));
+function dbGet(store, key){
+  return new Promise((res, rej) => {
+    const t = db.transaction(store, "readonly");
+    const rq = t.objectStore(store).get(key);
+    rq.onsuccess = () => res(rq.result);
+    rq.onerror = () => rej(rq.error);
+  });
+}
+function dbAll(store){
+  return new Promise((res, rej) => {
+    const rq = db.transaction(store, "readonly").objectStore(store).getAll();
+    rq.onsuccess = () => res(rq.result);
+    rq.onerror = () => rej(rq.error);
+  });
+}
+function mediaKeys(chatId){
+  return new Promise((res, rej) => {
+    const rq = db.transaction("media", "readonly").objectStore("media").index("chat").getAllKeys(chatId);
+    rq.onsuccess = () => res(rq.result.map(k => k[1]));
+    rq.onerror = () => rej(rq.error);
+  });
+}
+function deleteChatData(chatId){
+  return new Promise((res, rej) => {
+    const t = db.transaction(["chats", "msgs", "media"], "readwrite");
+    t.objectStore("chats").delete(chatId);
+    t.objectStore("msgs").delete(chatId);
+    const idx = t.objectStore("media").index("chat");
+    idx.openKeyCursor(IDBKeyRange.only(chatId)).onsuccess = e => {
+      const c = e.target.result;
+      if (c){ t.objectStore("media").delete(c.primaryKey); c.continue(); }
+    };
+    t.oncomplete = () => res();
+    t.onerror = () => rej(t.error);
+  });
+}
+
+/* ================= Chat bloccate ================= */
+// Blocco all'importazione basato su hash: qui NON compaiono nomi in chiaro.
+// Per generare gli hash apri l'app aggiungendo #genera all'indirizzo
+// (es. https://tuosito/.../#genera), inserisci il nome o numero, poi
+// incolla il risultato qui dentro. Es.:
+// const CHAT_BLOCCATE_HASH = ["a3f1…", "9bc2…"];
+const CHAT_BLOCCATE_HASH = [];
+
+const norm = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+async function sha256(s){
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
+}
+// Varianti confrontate: nome completo normalizzato, singole parole (>=3 lettere),
+// sole cifre (>=6) per i numeri di telefono in qualsiasi formattazione.
+function varianti(s){
+  const n = norm(s).replace(/\s+/g, " ").trim();
+  const out = new Set();
+  if (n) out.add(n);
+  for (const t of n.split(/[\s.,;:'"()\-]+/)) if (t.length >= 3 && /[a-z]/.test(t)) out.add(t);
+  const digits = n.replace(/\D/g, "");
+  if (digits.length >= 6) out.add(digits);
+  if (digits.length > 10) out.add(digits.slice(-10));
+  return [...out];
+}
+async function chatBloccata(nome, mittenti){
+  if (!CHAT_BLOCCATE_HASH.length || !crypto.subtle) return false;
+  const set = new Set(CHAT_BLOCCATE_HASH.map(h => h.toLowerCase()));
+  for (const c of [nome, ...mittenti])
+    for (const v of varianti(c))
+      if (set.has(await sha256(v))) return true;
+  return false;
+}
+
+/* ================= Stato ================= */
+let current = null;         // meta chat corrente {id,name,count,first,last,dateMode,me}
+let messages = [];
+let dateMode = "dmy";
+let me = null;
+let sendersList = [];
+let mediaNames = new Set(); // basenames disponibili per la chat corrente
+let urlCache = new Map();   // name -> objectURL
+let months = [];
+let rStart = 0, rEnd = 0;
+const CHUNK = 300;
+let busy = false;
+
+const $ = id => document.getElementById(id);
+const chatEl = $("chat"), msgsEl = $("msgs");
+
+/* ================= Parsing ================= */
+const HEAD_RE = /^\u200e?\[?(\d{1,2})[\/.](\d{1,2})[\/.](\d{2,4}),?\s+(\d{1,2})[:.](\d{2})(?:[:.](\d{2}))?\s?([AaPp]\.?[Mm]\.?)?\]?\s*(?:-\s)?(.*)$/;
+const SENDER_RE = /^([^:]{1,60}?):\s([\s\S]*)$/;
+const OMIT_RE = /^<?\s*(?:Media omessi|Media omitted|immagine omessa|image omitted|video omesso|video omitted|audio omesso|audio omitted|sticker non incluso|sticker omitted|GIF esclusa|GIF omitted|documento omesso|document omitted|Scheda contatto omessa|Contact card omitted)\s*>?\.?$/i;
+const clean = s => s.replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g, "");
+
+function extractAtts(text){
+  const atts = [];
+  let t = text.replace(/<\s*(?:allegato|attached)\s*:\s*([^>]+?)\s*>/gi, (_, f) => { atts.push(f.trim()); return ""; });
+  t = t.replace(/([\w][\w\-. ()]*?\.[A-Za-z0-9]{2,5})\s*\((?:file allegato|file attached)\)/gi, (_, f) => { atts.push(f.trim()); return ""; });
+  return { text: t.trim(), atts };
+}
+function parseTxt(raw){
+  const lines = raw.split(/\r?\n/);
+  const out = [];
+  let cur = null;
+  for (const rawLine of lines){
+    const line = clean(rawLine);
+    const m = line.match(HEAD_RE);
+    if (m){
+      if (cur) out.push(finish(cur));
+      const [, d1, d2, y, hh, mi, , ampm, rest] = m;
+      const sm = rest.match(SENDER_RE);
+      cur = { d1: +d1, d2: +d2, y: +y < 100 ? 2000 + +y : +y, hh: +hh, mi,
+              ampm: ampm ? ampm[0].toUpperCase() : null,
+              sender: sm ? sm[1].trim() : null, text: sm ? sm[2] : rest };
+    } else if (cur){ cur.text += "\n" + line; }
+  }
+  if (cur) out.push(finish(cur));
+  return out;
+}
+function finish(m){
+  const { text, atts } = extractAtts(m.text);
+  m.atts = atts;
+  m.omitted = !atts.length && OMIT_RE.test(text.trim());
+  m.text = m.omitted ? "" : text;
+  if (m.ampm === "P" && m.hh < 12) m.hh += 12;
+  if (m.ampm === "A" && m.hh === 12) m.hh = 0;
+  return m;
+}
+
+function day(m){ return dateMode === "dmy" ? m.d1 : m.d2; }
+function mon(m){ return dateMode === "dmy" ? m.d2 : m.d1; }
+function dayKey(i){ const m = messages[i]; return m.y * 10000 + mon(m) * 100 + day(m); }
+const fmtSep = new Intl.DateTimeFormat("it-IT", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const fmtShort = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "short", year: "numeric" });
+const fmtMonth = new Intl.DateTimeFormat("it-IT", { month: "long", year: "numeric" });
+function msgDate(m){ return new Date(m.y, mon(m) - 1, day(m)); }
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+/* ================= Media ================= */
+const EXT_MIME = { jpg:"image/jpeg", jpeg:"image/jpeg", png:"image/png", gif:"image/gif", webp:"image/webp", bmp:"image/bmp",
+  mp4:"video/mp4", "3gp":"video/3gpp", mov:"video/quicktime", webm:"video/webm", mkv:"video/x-matroska",
+  opus:"audio/ogg", ogg:"audio/ogg", mp3:"audio/mpeg", m4a:"audio/mp4", aac:"audio/aac", wav:"audio/wav", amr:"audio/amr",
+  pdf:"application/pdf" };
+const IMG = new Set(["jpg","jpeg","png","gif","webp","bmp"]);
+const VID = new Set(["mp4","3gp","mov","webm","mkv"]);
+const AUD = new Set(["opus","ogg","mp3","m4a","aac","wav","amr"]);
+const ext = n => (n.split(".").pop() || "").toLowerCase();
+const baseName = n => n.split("/").pop().split("\\").pop().trim();
+const base = n => baseName(n).toLowerCase();
+
+async function mediaURL(name){
+  const key = base(name);
+  if (urlCache.has(key)) return urlCache.get(key);
+  const rec = await dbGet("media", [current.id, key]);
+  if (!rec) return null;
+  let blob = rec.blob;
+  if (!blob.type){ blob = new Blob([blob], { type: EXT_MIME[ext(name)] || "application/octet-stream" }); }
+  const url = URL.createObjectURL(blob);
+  urlCache.set(key, url);
+  return url;
+}
+function clearUrlCache(){
+  for (const u of urlCache.values()) URL.revokeObjectURL(u);
+  urlCache.clear();
+}
+
+const imgObserver = new IntersectionObserver(entries => {
+  for (const en of entries){
+    if (!en.isIntersecting) continue;
+    const el = en.target;
+    imgObserver.unobserve(el);
+    mediaURL(el.dataset.f).then(url => {
+      if (!url){ el.textContent = "🖼️ non disponibile"; return; }
+      const img = document.createElement("img");
+      img.src = url; img.alt = el.dataset.f; img.loading = "lazy";
+      img.addEventListener("click", () => { $("lightboxImg").src = url; $("lightbox").hidden = false; });
+      el.replaceWith(img);
+    });
+  }
+}, { root: chatEl, rootMargin: "400px" });
+
+function mediaNode(name){
+  const wrap = document.createElement("div");
+  wrap.className = "media";
+  const x = ext(name);
+  if (!mediaNames.has(base(name))){
+    wrap.innerHTML = '<div class="missing">📎 ' + esc(name) + ' — media non in archivio</div>';
+    return wrap;
+  }
+  if (IMG.has(x)){
+    const ph = document.createElement("div");
+    ph.className = "ph"; ph.dataset.f = name; ph.textContent = "🖼️ …";
+    wrap.appendChild(ph); imgObserver.observe(ph);
+  } else if (VID.has(x) || AUD.has(x)){
+    const isV = VID.has(x);
+    const btn = document.createElement("button");
+    btn.className = "mediaBtn";
+    btn.innerHTML = '<span class="ic">' + (isV ? "🎬" : "🎧") + '</span><span>' + (isV ? "Video" : "Audio") + " · " + esc(name) + "</span>";
+    btn.addEventListener("click", async () => {
+      const url = await mediaURL(name);
+      if (!url) return;
+      const el = document.createElement(isV ? "video" : "audio");
+      el.controls = true; el.src = url;
+      el.onerror = () => el.replaceWith(dlLink(name, url));
+      btn.replaceWith(el);
+      el.play().catch(() => {});
+    });
+    wrap.appendChild(btn);
+  } else {
+    const btn = document.createElement("button");
+    btn.className = "mediaBtn";
+    btn.innerHTML = '<span class="ic">📄</span><span>' + esc(name) + "</span>";
+    btn.addEventListener("click", async () => {
+      const url = await mediaURL(name);
+      if (url) dlLink(name, url).click();
+    });
+    wrap.appendChild(btn);
+  }
+  return wrap;
+}
+function dlLink(name, url){
+  const a = document.createElement("a");
+  a.href = url; a.download = name; a.textContent = "⬇️ " + name; a.className = "mediaBtn";
+  return a;
+}
+
+/* ================= Rendering chat ================= */
+const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const richText = s => esc(s).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>').replace(/\n/g, "<br>");
+const PALETTE = ["#e542a3","#1f7aec","#fa6533","#7f66ff","#00a884","#c4820e","#d4306d","#0e9aa7"];
+function senderColor(name){
+  let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return PALETTE[h % PALETTE.length];
+}
+function sepEl(i, forced){
+  const d = document.createElement("div");
+  d.className = "sep" + (forced ? " sep-forced" : "");
+  d.dataset.idx = i;
+  d.textContent = cap(fmtSep.format(msgDate(messages[i])));
+  return d;
+}
+function bubbleEl(i){
+  const m = messages[i];
+  if (!m.sender){
+    const d = document.createElement("div");
+    d.className = "sys"; d.dataset.idx = i;
+    d.innerHTML = richText(m.text);
+    return d;
+  }
+  const row = document.createElement("div");
+  const mine = me && m.sender === me;
+  const prev = messages[i - 1];
+  const newGroup = !prev || prev.sender !== m.sender || dayKey(i) !== (i > 0 ? dayKey(i - 1) : -1);
+  row.className = "row" + (mine ? " me" : "") + (newGroup ? " grp" : "");
+  row.dataset.idx = i;
+  const b = document.createElement("div");
+  b.className = "bubble";
+  if (!mine && newGroup && (sendersList.length > 2 || !me)){
+    const s = document.createElement("div");
+    s.className = "sender"; s.style.color = senderColor(m.sender); s.textContent = m.sender;
+    b.appendChild(s);
+  }
+  for (const a of m.atts) b.appendChild(mediaNode(a));
+  if (m.omitted){
+    const o = document.createElement("div");
+    o.className = "omitted"; o.textContent = "📎 media non incluso nell'export";
+    b.appendChild(o);
+  }
+  if (m.text){
+    const t = document.createElement("div");
+    t.className = "txt"; t.innerHTML = richText(m.text);
+    b.appendChild(t);
+  }
+  const tm = document.createElement("span");
+  tm.className = "time"; tm.textContent = String(m.hh).padStart(2, "0") + ":" + m.mi;
+  b.appendChild(tm);
+  row.appendChild(b);
+  return row;
+}
+function buildFrag(a, b, forceFirstSep){
+  const frag = document.createDocumentFragment();
+  for (let i = a; i < b; i++){
+    if ((i === a && forceFirstSep && a > 0) || i === 0 || (i > 0 && dayKey(i) !== dayKey(i - 1)))
+      frag.appendChild(sepEl(i, i === a && a > 0 && dayKey(i) === (i > 0 ? dayKey(i - 1) : -1)));
+    frag.appendChild(bubbleEl(i));
+  }
+  return frag;
+}
+function renderWindow(a, b, scrollToIdx, align){
+  msgsEl.innerHTML = "";
+  rStart = a; rEnd = b;
+  msgsEl.appendChild(buildFrag(a, b, true));
+  requestAnimationFrame(() => {
+    if (scrollToIdx == null){ chatEl.scrollTop = chatEl.scrollHeight; return; }
+    const el = msgsEl.querySelector('[data-idx="' + scrollToIdx + '"]');
+    if (el) el.scrollIntoView({ block: align || "center" });
+    else chatEl.scrollTop = 0;
+  });
+}
+function prependChunk(){
+  if (rStart <= 0 || busy) return;
+  busy = true;
+  const a = Math.max(0, rStart - CHUNK);
+  const forced = msgsEl.querySelector(".sep-forced");
+  if (forced && dayKey(rStart) === dayKey(rStart - 1)) forced.remove();
+  else if (forced) forced.classList.remove("sep-forced");
+  const h0 = chatEl.scrollHeight;
+  msgsEl.insertBefore(buildFrag(a, rStart, true), msgsEl.firstChild);
+  chatEl.scrollTop += chatEl.scrollHeight - h0;
+  rStart = a;
+  busy = false;
+}
+function appendChunk(){
+  if (rEnd >= messages.length || busy) return;
+  busy = true;
+  const b = Math.min(messages.length, rEnd + CHUNK);
+  msgsEl.appendChild(buildFrag(rEnd, b, false));
+  rEnd = b;
+  busy = false;
+}
+new IntersectionObserver(e => { if (e[0].isIntersecting && current) prependChunk(); }, { root: chatEl, rootMargin: "600px" }).observe($("topSentinel"));
+new IntersectionObserver(e => { if (e[0].isIntersecting && current) appendChunk(); }, { root: chatEl, rootMargin: "600px" }).observe($("bottomSentinel"));
+
+let chipTimer = null;
+chatEl.addEventListener("scroll", () => {
+  if (!current) return;
+  const hdrH = document.querySelector("header").getBoundingClientRect().bottom;
+  const el = document.elementFromPoint(innerWidth / 2, hdrH + 40);
+  const node = el && el.closest("[data-idx]");
+  if (node){
+    const chip = $("dateChip");
+    chip.textContent = cap(fmtShort.format(msgDate(messages[+node.dataset.idx])));
+    chip.classList.add("show");
+    clearTimeout(chipTimer);
+    chipTimer = setTimeout(() => chip.classList.remove("show"), 1100);
+  }
+}, { passive: true });
+
+/* ================= Import ================= */
+$("fab").addEventListener("click", () => $("fileInput").click());
+$("fileInput").addEventListener("change", async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  showOverlay("Lettura di " + f.name + "…");
+  try {
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+    let txt = null, name = "", zipMedia = [];
+    if (/\.zip$/i.test(f.name)){
+      const zip = await JSZip.loadAsync(f);
+      const txts = [];
+      zip.forEach((path, entry) => {
+        if (entry.dir) return;
+        if (base(path).endsWith(".txt")) txts.push(entry);
+        else zipMedia.push(entry);
+      });
+      const chatEntry = txts.find(t => base(t.name).startsWith("_chat")) ||
+                        txts.find(t => /chat/i.test(t.name)) || txts[0];
+      if (!chatEntry) throw new Error("Nessun file .txt trovato nello ZIP.");
+      txt = await chatEntry.async("string");
+      name = baseName(chatEntry.name).replace(/\.txt$/i, "");
+      if (/^_chat$/i.test(name)) name = f.name.replace(/\.zip$/i, "");
+    } else {
+      txt = await f.text();
+      name = f.name.replace(/\.txt$/i, "");
+    }
+    name = name.replace(/^whatsapp chat (?:con|with)\s*/i, "").replace(/^chat whatsapp (?:con|with)\s*/i, "");
+
+    showOverlay("Analisi messaggi…");
+    await tick();
+    const parsed = parseTxt(txt);
+    if (!parsed.length) throw new Error("Nessun messaggio riconosciuto. Il file è un export di WhatsApp?");
+
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    let dm = "dmy";
+    if (!parsed.some(m => m.d1 > 12) && parsed.some(m => m.d2 > 12)) dm = "mdy";
+    const counts = new Map();
+    for (const m of parsed) if (m.sender) counts.set(m.sender, (counts.get(m.sender) || 0) + 1);
+    const senders = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(x => x[0]);
+    if (await chatBloccata(name, senders)) throw new Error("prova con una qualunque altra persona 🙃");
+
+    await dbPut("msgs", { id, list: parsed });
+    // Salva media
+    for (let i = 0; i < zipMedia.length; i++){
+      if (i % 10 === 0){ showOverlay("Salvataggio media " + (i + 1) + "/" + zipMedia.length + "…"); await tick(); }
+      const entry = zipMedia[i];
+      const buf = await entry.async("arraybuffer");
+      const blob = new Blob([buf], { type: EXT_MIME[ext(entry.name)] || "application/octet-stream" });
+      await dbPut("media", { chat: id, name: base(entry.name), blob });
+    }
+    const meta = { id, name, count: parsed.length,
+      dateMode: dm, me: null, created: Date.now(),
+      senders,
+      mediaCount: zipMedia.length };
+    await dbPut("chats", meta);
+    await openChat(meta);
+    if (meta.senders.length >= 2) $("whoBar").hidden = false;
+  } catch (err){
+    alert("Errore: " + err.message);
+    renderHome();
+  } finally {
+    hideOverlay();
+    e.target.value = "";
+  }
+});
+
+$("mediaInput").addEventListener("change", async e => {
+  if (!current) return;
+  const files = [...e.target.files];
+  e.target.value = "";
+  if (!files.length) return;
+  showOverlay("Salvataggio media…");
+  try {
+    for (const f of files){
+      await dbPut("media", { chat: current.id, name: base(f.name), blob: f });
+      mediaNames.add(base(f.name));
+    }
+    current.mediaCount = (current.mediaCount || 0) + files.length;
+    await dbPut("chats", current);
+    renderWindow(rStart, rEnd, firstVisibleIdx(), "start");
+    toast(files.length + " media aggiunti");
+  } finally { hideOverlay(); }
+});
+
+const tick = () => new Promise(r => setTimeout(r, 20));
+
+/* ================= Home ================= */
+async function renderHome(){
+  current = null;
+  document.body.classList.remove("inChat");
+  $("hdrTitle").textContent = "Archivio chat WhatsApp";
+  const chats = (await dbAll("chats")).sort((a, b) => b.created - a.created);
+  $("hdrSub").textContent = chats.length ? chats.length + (chats.length === 1 ? " chat in archivio" : " chat in archivio") : "le tue chat esportate, salvate sul dispositivo";
+  const list = $("chatList");
+  list.innerHTML = "";
+  $("emptyHome").hidden = chats.length > 0;
+  for (const c of chats){
+    const card = document.createElement("div");
+    card.className = "card";
+    const av = document.createElement("div");
+    av.className = "avatar";
+    av.style.background = senderColor(c.name);
+    av.textContent = (c.name.trim()[0] || "?").toUpperCase();
+    const mainD = document.createElement("div");
+    mainD.className = "cMain";
+    const period = periodLabel(c);
+    mainD.innerHTML = '<div class="cName">' + esc(c.name) + '</div>' +
+      '<div class="cSub">' + c.count.toLocaleString("it-IT") + " messaggi" +
+      (c.mediaCount ? " · " + c.mediaCount + " media" : "") + (period ? " · " + period : "") + "</div>";
+    const del = document.createElement("button");
+    del.className = "cDel"; del.title = "Elimina"; del.setAttribute("aria-label", "Elimina " + c.name);
+    del.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
+    del.addEventListener("click", async ev => {
+      ev.stopPropagation();
+      if (!confirm('Eliminare "' + c.name + '" dall\'archivio? I file originali non vengono toccati.')) return;
+      showOverlay("Eliminazione…");
+      await deleteChatData(c.id);
+      hideOverlay();
+      renderHome();
+    });
+    card.append(av, mainD, del);
+    card.addEventListener("click", () => openChat(c, true));
+    list.appendChild(card);
+  }
+}
+function periodLabel(c){
+  if (!c.first || !c.last) return "";
+  return c.first + " – " + c.last;
+}
+
+/* ================= Apertura chat ================= */
+async function openChat(meta, push){
+  showOverlay("Apertura chat…");
+  try {
+    clearUrlCache();
+    current = meta;
+    dateMode = meta.dateMode || "dmy";
+    me = meta.me || null;
+    sendersList = meta.senders || [];
+    const rec = await dbGet("msgs", meta.id);
+    messages = rec ? rec.list : [];
+    mediaNames = new Set(await mediaKeys(meta.id));
+    updateFmtLabel();
+    buildWho();
+    buildMonths();
+    // Aggiorna periodo nel meta se mancante
+    if (!meta.first && messages.length){
+      meta.first = fmtShort.format(msgDate(messages[0]));
+      meta.last = fmtShort.format(msgDate(messages[messages.length - 1]));
+      dbPut("chats", meta);
+    }
+    updateHeader();
+    document.body.classList.add("inChat");
+    $("whoBar").hidden = true;
+    if (push) history.pushState({ chat: meta.id }, "");
+    renderWindow(Math.max(0, messages.length - CHUNK), messages.length, null);
+  } finally { hideOverlay(); }
+}
+function updateHeader(){
+  $("hdrTitle").textContent = current.name || "Chat";
+  const a = messages.length ? fmtShort.format(msgDate(messages[0])) : "";
+  const b = messages.length ? fmtShort.format(msgDate(messages[messages.length - 1])) : "";
+  $("hdrSub").textContent = messages.length.toLocaleString("it-IT") + " messaggi · " + a + " – " + b +
+    (dateMode === "mdy" ? " · formato mm/gg" : "");
+}
+function goHome(){
+  clearUrlCache();
+  closeBars();
+  renderHome();
+}
+$("btnBack").addEventListener("click", () => { if (history.state && history.state.chat) history.back(); else goHome(); });
+window.addEventListener("popstate", () => { if (current) goHome(); });
+
+function closeBars(){
+  $("searchBar").hidden = true; $("jumpBar").hidden = true;
+  $("menuSheet").hidden = true; $("whoBar").hidden = true;
+}
+
+/* ================= Chi sono io ================= */
+function buildWho(){
+  const chips = $("whoChips");
+  chips.innerHTML = "";
+  const sel = $("meSel");
+  sel.innerHTML = '<option value="">(nessuno — tutto a sinistra)</option>';
+  for (const s of sendersList){
+    const o = document.createElement("option");
+    o.value = s; o.textContent = s;
+    sel.appendChild(o);
+  }
+  sel.value = me || "";
+  sel.onchange = () => setMe(sel.value || null);
+  if (sendersList.length >= 2 && sendersList.length <= 6){
+    for (const s of sendersList.slice(0, 6)){
+      const c = document.createElement("button");
+      c.className = "chip"; c.textContent = s;
+      c.onclick = () => { setMe(s); $("whoBar").hidden = true; };
+      chips.appendChild(c);
+    }
+    const skip = document.createElement("button");
+    skip.className = "chip"; skip.textContent = "salta";
+    skip.onclick = () => $("whoBar").hidden = true;
+    chips.appendChild(skip);
+  }
+}
+function setMe(name){
+  me = name;
+  $("meSel").value = name || "";
+  if (current){ current.me = name; dbPut("chats", current); }
+  renderWindow(rStart, rEnd, firstVisibleIdx(), "start");
+}
+function buildMonths(){
+  months = [];
+  let last = "";
+  for (let i = 0; i < messages.length; i++){
+    const k = messages[i].y + "-" + mon(messages[i]);
+    if (k !== last){ last = k; months.push({ label: cap(fmtMonth.format(msgDate(messages[i]))), idx: i }); }
+  }
+  const sel = $("monthSel");
+  sel.innerHTML = '<option value="">Vai al mese…</option>';
+  months.forEach((mo, j) => {
+    const o = document.createElement("option");
+    o.value = j; o.textContent = mo.label;
+    sel.appendChild(o);
+  });
+}
+function firstVisibleIdx(){
+  const hdrH = document.querySelector("header").getBoundingClientRect().bottom;
+  const el = document.elementFromPoint(innerWidth / 2, hdrH + 30);
+  const node = el && el.closest("[data-idx]");
+  return node ? +node.dataset.idx : rStart;
+}
+
+/* ================= Ricerca ================= */
+let hits = [], hitPos = -1;
+$("btnSearch").onclick = () => { $("jumpBar").hidden = true; $("searchBar").hidden = false; $("searchInput").focus(); };
+$("searchClose").onclick = () => { $("searchBar").hidden = true; hits = []; hitPos = -1; $("searchCnt").textContent = "–"; };
+let searchDeb = null;
+$("searchInput").addEventListener("input", () => { clearTimeout(searchDeb); searchDeb = setTimeout(runSearch, 350); });
+$("searchInput").addEventListener("keydown", e => { if (e.key === "Enter") goHit(hitPos < 0 ? hits.length - 1 : hitPos - 1); });
+function runSearch(){
+  const q = $("searchInput").value.trim().toLowerCase();
+  hits = []; hitPos = -1;
+  if (q.length < 2){ $("searchCnt").textContent = "–"; return; }
+  for (let i = 0; i < messages.length; i++){
+    const m = messages[i];
+    if (m.text && m.text.toLowerCase().includes(q)) hits.push(i);
+  }
+  $("searchCnt").textContent = hits.length ? hits.length.toLocaleString("it-IT") : "0";
+  if (hits.length) goHit(hits.length - 1);
+}
+$("searchPrev").onclick = () => goHit(hitPos - 1);
+$("searchNext").onclick = () => goHit(hitPos + 1);
+function goHit(k){
+  if (!hits.length) return;
+  hitPos = ((k % hits.length) + hits.length) % hits.length;
+  $("searchCnt").textContent = (hitPos + 1) + "/" + hits.length;
+  jumpTo(hits[hitPos], true);
+}
+function jumpTo(i, flash){
+  const a = Math.max(0, i - 80), b = Math.min(messages.length, i + 80);
+  renderWindow(a, b, i, "center");
+  if (flash) requestAnimationFrame(() => {
+    const el = msgsEl.querySelector('[data-idx="' + i + '"] .bubble') || msgsEl.querySelector('[data-idx="' + i + '"]');
+    if (el){ el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
+  });
+}
+
+/* ================= Vai a data ================= */
+$("btnJump").onclick = () => { $("searchBar").hidden = true; $("jumpBar").hidden = !$("jumpBar").hidden; };
+$("jumpClose").onclick = () => $("jumpBar").hidden = true;
+$("monthSel").onchange = e => { const j = e.target.value; if (j !== ""){ jumpToTop(months[+j].idx); e.target.value = ""; } };
+$("goStart").onclick = () => jumpToTop(0);
+$("goEnd").onclick = () => renderWindow(Math.max(0, messages.length - CHUNK), messages.length, null);
+function jumpToTop(i){
+  renderWindow(i, Math.min(messages.length, i + CHUNK), i, "start");
+}
+
+/* ================= Menu ================= */
+$("btnMenu").onclick = () => $("menuSheet").hidden = !$("menuSheet").hidden;
+document.addEventListener("click", e => {
+  if (!$("menuSheet").hidden && !$("menuSheet").contains(e.target) && !$("btnMenu").contains(e.target))
+    $("menuSheet").hidden = true;
+});
+$("fmtToggle").onclick = () => {
+  dateMode = dateMode === "dmy" ? "mdy" : "dmy";
+  if (current){ current.dateMode = dateMode; current.first = null; dbPut("chats", current); }
+  updateFmtLabel();
+  buildMonths(); updateHeader();
+  renderWindow(rStart, rEnd, firstVisibleIdx(), "start");
+};
+function updateFmtLabel(){
+  $("fmtToggle").textContent = dateMode === "dmy" ? "Giorno/Mese (gg/mm) ✓" : "Mese/Giorno (mm/gg) ✓";
+}
+$("addMedia").onclick = () => { $("menuSheet").hidden = true; $("mediaInput").click(); };
+$("renameChat").onclick = async () => {
+  $("menuSheet").hidden = true;
+  if (!current) return;
+  const n = prompt("Nome della chat:", current.name);
+  if (n && n.trim()){
+    current.name = n.trim();
+    await dbPut("chats", current);
+    updateHeader();
+  }
+};
+
+/* ================= Vari ================= */
+$("lightbox").addEventListener("click", () => { $("lightbox").hidden = true; $("lightboxImg").src = ""; });
+function showOverlay(t){ $("overlayTxt").textContent = t; $("overlay").hidden = false; }
+function hideOverlay(){ $("overlay").hidden = true; }
+function toast(t){
+  const chip = $("dateChip");
+  chip.textContent = t; chip.classList.add("show");
+  clearTimeout(chipTimer);
+  chipTimer = setTimeout(() => chip.classList.remove("show"), 1600);
+}
+
+/* ================= Avvio ================= */
+(async () => {
+  if (location.hash === "#genera"){
+    if (!crypto.subtle){ alert("Generatore disponibile solo su https."); }
+    else {
+      const n = prompt("Generatore blocco — nome o numero da bloccare:");
+      if (n){
+        const hs = [];
+        for (const v of varianti(n)) hs.push('"' + await sha256(v) + '"');
+        prompt("Copia e incolla dentro CHAT_BLOCCATE_HASH in index.html:", hs.join(", "));
+      }
+    }
+    history.replaceState(null, "", location.pathname);
+  }
+  try { db = await openDB(); }
+  catch (e){ alert("Archivio non disponibile: " + e.message + "\nApri l'app dal suo indirizzo web (non come file locale)."); return; }
+  renderHome();
+  if ("serviceWorker" in navigator){
+    try { navigator.serviceWorker.register("sw.js"); } catch (e){}
+  }
+})();
+</script>
+</body>
+</html>
