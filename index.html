@@ -255,7 +255,7 @@ function deleteChatData(chatId){
 // (es. https://tuosito/.../#genera), inserisci il nome o numero, poi
 // incolla il risultato qui dentro. Es.:
 // const CHAT_BLOCCATE_HASH = ["a3f1…", "9bc2…"];
-const CHAT_BLOCCATE_HASH = [];
+const CHAT_BLOCCATE_HASH = ["295dff653648e5a7510f4b5dd1ab56216dac90e99f7801d983607a7886683750","fde8eb99a019b8b4aede6323f3be2a6595dce32396f8101b05cb7448b4fd04c0","88871300f3b9311b56ef88bf5caab599a308e0c20f429ed6a6fac9a4be220815","2d807432caec5f3e571cc555c32fe0154cc1d0e64c9345dab04c20bf915c9a61","4d5ac8437de7121952c83d7f61a3ae875f0e07cc0128243510007d17015761cf","28df6dc64b5928f3b784ddb9ac6ed7f83fef0880e6643b4720baf32500bfc4ef","409c8acaba3ab74f004f6fb502679e35d4288260e9a5900eebda23fe64888821","709a61f5be80032c1c666b0886a5ddd6c56404e7982300614b67a2a473d86e0c"];
 
 const norm = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 async function sha256(s){
@@ -534,19 +534,38 @@ function appendChunk(){
 new IntersectionObserver(e => { if (e[0].isIntersecting && current) prependChunk(); }, { root: chatEl, rootMargin: "600px" }).observe($("topSentinel"));
 new IntersectionObserver(e => { if (e[0].isIntersecting && current) appendChunk(); }, { root: chatEl, rootMargin: "600px" }).observe($("bottomSentinel"));
 
-let chipTimer = null;
-chatEl.addEventListener("scroll", () => {
-  if (!current) return;
-  const hdrH = document.querySelector("header").getBoundingClientRect().bottom;
-  const el = document.elementFromPoint(innerWidth / 2, hdrH + 40);
-  const node = el && el.closest("[data-idx]");
-  if (node){
-    const chip = $("dateChip");
-    chip.textContent = cap(fmtShort.format(msgDate(messages[+node.dataset.idx])));
-    chip.classList.add("show");
-    clearTimeout(chipTimer);
-    chipTimer = setTimeout(() => chip.classList.remove("show"), 1100);
+let chipTimer = null, chipPending = false;
+function chipAnchorY(){
+  let y = document.querySelector("header").getBoundingClientRect().bottom;
+  for (const id of ["searchBar", "jumpBar", "whoBar"]){
+    const el = $(id);
+    if (el && !el.hidden) y = Math.max(y, el.getBoundingClientRect().bottom);
   }
+  return y;
+}
+function idxAtTop(){
+  const y0 = chipAnchorY();
+  for (const dy of [6, 24, 48, 80]){
+    const el = document.elementFromPoint(innerWidth / 2, y0 + dy);
+    const node = el && el.closest("[data-idx]");
+    if (node) return +node.dataset.idx;
+  }
+  return null;
+}
+function updateChip(){
+  const chip = $("dateChip");
+  const i = idxAtTop();
+  if (i != null) chip.textContent = cap(fmtSep.format(msgDate(messages[i])));
+  if (!chip.textContent) return;
+  chip.style.top = (chipAnchorY() + 8) + "px";
+  chip.classList.add("show");
+  clearTimeout(chipTimer);
+  chipTimer = setTimeout(() => chip.classList.remove("show"), 900);
+}
+chatEl.addEventListener("scroll", () => {
+  if (!current || chipPending) return;
+  chipPending = true;
+  requestAnimationFrame(() => { chipPending = false; if (current) updateChip(); });
 }, { passive: true });
 
 /* ================= Import ================= */
@@ -718,6 +737,8 @@ function updateHeader(){
 function goHome(){
   clearUrlCache();
   closeBars();
+  const chip = $("dateChip");
+  chip.classList.remove("show"); chip.textContent = "";
   renderHome();
 }
 $("btnBack").addEventListener("click", () => { if (history.state && history.state.chat) history.back(); else goHome(); });
@@ -861,9 +882,11 @@ function showOverlay(t){ $("overlayTxt").textContent = t; $("overlay").hidden = 
 function hideOverlay(){ $("overlay").hidden = true; }
 function toast(t){
   const chip = $("dateChip");
-  chip.textContent = t; chip.classList.add("show");
+  chip.textContent = t;
+  chip.style.top = (chipAnchorY() + 8) + "px";
+  chip.classList.add("show");
   clearTimeout(chipTimer);
-  chipTimer = setTimeout(() => chip.classList.remove("show"), 1600);
+  chipTimer = setTimeout(() => { chip.classList.remove("show"); chip.textContent = ""; }, 1600);
 }
 
 /* ================= Avvio ================= */

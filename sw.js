@@ -1,4 +1,4 @@
-const CACHE = "wa-archivio-v1";
+const CACHE = "wa-archivio-v2";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest",
   "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"];
 self.addEventListener("install", e => {
@@ -11,11 +11,18 @@ self.addEventListener("activate", e => {
 });
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
-  e.respondWith(
-    caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
+  const isPage = e.request.mode === "navigate" || e.request.url.endsWith("/index.html");
+  if (isPage){
+    e.respondWith(fetch(e.request).then(res => {
       const copy = res.clone();
       caches.open(CACHE).then(c => c.put(e.request, copy));
       return res;
-    }).catch(() => caches.match("./index.html")))
-  );
+    }).catch(() => caches.match(e.request).then(r => r || caches.match("./index.html"))));
+  } else {
+    e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
+      const copy = res.clone();
+      caches.open(CACHE).then(c => c.put(e.request, copy));
+      return res;
+    })));
+  }
 });
