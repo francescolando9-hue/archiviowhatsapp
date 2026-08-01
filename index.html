@@ -1046,6 +1046,7 @@ function buildMonths(){
   months = [];
   let last = "";
   for (let i = 0; i < messages.length; i++){
+    if (!messages[i].sender) continue; // ignora gli avvisi automatici di WhatsApp
     const k = messages[i].y + "-" + mon(messages[i]);
     if (k !== last){ last = k; months.push({ label: cap(fmtMonth.format(msgDate(messages[i]))), idx: i }); }
   }
@@ -1103,7 +1104,7 @@ function jumpTo(i, flash){
 $("btnJump").onclick = () => { $("searchBar").hidden = true; $("jumpBar").hidden = !$("jumpBar").hidden; };
 $("jumpClose").onclick = () => $("jumpBar").hidden = true;
 $("monthSel").onchange = e => { const j = e.target.value; if (j !== ""){ jumpToTop(months[+j].idx); e.target.value = ""; } };
-$("goStart").onclick = () => jumpToTop(0);
+$("goStart").onclick = () => jumpToTop(firstRealIdx());
 $("goEnd").onclick = () => renderWindow(Math.max(0, messages.length - CHUNK), messages.length, null);
 function jumpToTop(i){
   renderWindow(i, Math.min(messages.length, i + CHUNK), i, "start");
