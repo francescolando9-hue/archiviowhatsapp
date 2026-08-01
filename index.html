@@ -412,6 +412,9 @@ const HEAD_RE = /^\u200e?\[?(\d{1,2})[\/.](\d{1,2})[\/.](\d{2,4}),?\s+(\d{1,2})[
 const SENDER_RE = /^([^:]{1,60}?):\s([\s\S]*)$/;
 const OMIT_RE = /^<?\s*(?:Media omessi|Media omitted|immagine omessa|image omitted|video omesso|video omitted|audio omesso|audio omitted|sticker non incluso|sticker omitted|GIF esclusa|GIF omitted|documento omesso|document omitted|Scheda contatto omessa|Contact card omitted)\s*>?\.?$/i;
 const clean = s => s.replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g, "");
+// Avvisi di sistema che WhatsApp (specie su iOS) attribuisce al contatto come mittente
+const SYS_STRONG_RE = /^(i messaggi (e le chiamate sono|inviati a questa chat)|le chiamate e i messaggi sono|messages and calls are end-to-end|messages to this chat and calls|il codice di sicurezza di .{1,60} è cambiato|your security code with|hai bloccato questo contatto|hai sbloccato questo contatto|you blocked this contact|you unblocked this contact|.{1,60} ha cambiato numero di telefono(\\.| in un nuovo numero\\b.*)?$|.{1,60} changed their phone number(\\.| to a new number\\b.*)?$|(hai|.{1,60} ha) (attivato|disattivato) (i messaggi effimeri|la privacy avanzata)|you turned (on|off) disappearing messages)/i;
+const SYS_LRM_RE = /crittografat|end-to-end|codice di sicurezza|security code|cambiato numero|changed their phone|messaggi effimeri|disappearing messages|privacy avanzata|advanced chat privacy|account business|business account/i;
 
 function extractAtts(text){
   const atts = [];
@@ -432,7 +435,8 @@ function parseTxt(raw){
       const sm = rest.match(SENDER_RE);
       cur = { d1: +d1, d2: +d2, y: +y < 100 ? 2000 + +y : +y, hh: +hh, mi,
               ampm: ampm ? ampm[0].toUpperCase() : null,
-              sender: sm ? sm[1].trim() : null, text: sm ? sm[2] : rest };
+              sender: sm ? sm[1].trim() : null, text: sm ? sm[2] : rest,
+              lrm: rawLine.includes("\u200e") };
     } else if (cur){ cur.text += "\n" + line; }
   }
   if (cur) out.push(finish(cur));
@@ -443,6 +447,11 @@ function finish(m){
   m.atts = atts;
   m.omitted = !atts.length && OMIT_RE.test(text.trim());
   m.text = m.omitted ? "" : text;
+  const t = m.text.trim();
+  if (m.sender && !m.atts.length && !m.omitted &&
+      (SYS_STRONG_RE.test(t) || (m.lrm && SYS_LRM_RE.test(t))))
+    m.sender = null;
+  delete m.lrm;
   if (m.ampm === "P" && m.hh < 12) m.hh += 12;
   if (m.ampm === "A" && m.hh === 12) m.hh = 0;
   return m;
@@ -971,6 +980,14 @@ async function openChat(meta, push){
     sendersList = meta.senders || [];
     const rec = await dbGet("msgs", meta.id);
     messages = rec ? rec.list : [];
+    let migrated = 0;
+    for (const m of messages){
+      if (m.sender && (!m.atts || !m.atts.length) && !m.omitted &&
+          SYS_STRONG_RE.test((m.text || "").trim())){
+        m.sender = null; migrated++;
+      }
+    }
+    if (migrated) dbPut("msgs", { id: meta.id, list: messages });
     mediaNames = new Set(await mediaKeys(meta.id));
     updateFmtLabel();
     updateAvatarMenu();
@@ -1195,6 +1212,8 @@ function openGallery(){
   closeBars();
   buildGalleryIndex();
   $("galTitle").textContent = current.name;
+  $("galSub").textContent = messages.length.toLocaleString("it-IT") + " messaggi" +
+    (current.first && current.last ? " · " + current.first + " – " + current.last : "");
   document.querySelector('.galTab[data-t="media"]').textContent = "Media (" + galItems.media.length + ")";
   document.querySelector('.galTab[data-t="link"]').textContent = "Link (" + galItems.link.length + ")";
   document.querySelector('.galTab[data-t="doc"]').textContent = "Doc (" + galItems.doc.length + ")";
