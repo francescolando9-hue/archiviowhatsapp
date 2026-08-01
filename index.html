@@ -243,6 +243,7 @@
   <button class="mi" id="delAvatar" style="display:none">Rimuovi foto</button>
   <button class="mi" id="addMedia">Aggiungi media…</button>
   <button class="mi" id="renameChat">Rinomina chat…</button>
+  <div class="sec" style="text-align:right;opacity:.7">v1.8</div>
 </div>
 
 <div id="home">
@@ -252,7 +253,7 @@
     <p>Tocca <b>+</b> e apri il file <b>.zip</b> esportato da WhatsApp (con media) oppure il solo <b>.txt</b>.<br>La chat viene salvata sul dispositivo: da qui in poi la ritrovi sempre in questa lista, media compresi.</p>
     <p style="font-size:12px">WhatsApp → chat → ⋮ → Altro → Esporta chat</p>
   </div>
-  <div id="homeHint">Tutto resta in locale sul tuo dispositivo: nessun dato viene inviato a server.</div>
+  <div id="homeHint">Tutto resta in locale sul tuo dispositivo: nessun dato viene inviato a server. · v1.8</div>
 </div>
 <button id="fab" title="Importa export" aria-label="Importa export"><svg viewBox="0 0 24 24" width="26" height="26" fill="#fff"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg></button>
 
@@ -413,7 +414,7 @@ const SENDER_RE = /^([^:]{1,60}?):\s([\s\S]*)$/;
 const OMIT_RE = /^<?\s*(?:Media omessi|Media omitted|immagine omessa|image omitted|video omesso|video omitted|audio omesso|audio omitted|sticker non incluso|sticker omitted|GIF esclusa|GIF omitted|documento omesso|document omitted|Scheda contatto omessa|Contact card omitted)\s*>?\.?$/i;
 const clean = s => s.replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g, "");
 // Avvisi di sistema che WhatsApp (specie su iOS) attribuisce al contatto come mittente
-const SYS_STRONG_RE = /^(i messaggi (e le chiamate sono|inviati a questa chat)|le chiamate e i messaggi sono|messages and calls are end-to-end|messages to this chat and calls|il codice di sicurezza di .{1,60} è cambiato|your security code with|hai bloccato questo contatto|hai sbloccato questo contatto|you blocked this contact|you unblocked this contact|.{1,60} ha cambiato numero di telefono(\\.| in un nuovo numero\\b.*)?$|.{1,60} changed their phone number(\\.| to a new number\\b.*)?$|(hai|.{1,60} ha) (attivato|disattivato) (i messaggi effimeri|la privacy avanzata)|you turned (on|off) disappearing messages)/i;
+const SYS_STRONG_RE = /^(i messaggi (e le chiamate sono|inviati a questa chat|che invii a questa chat)|le chiamate e i messaggi sono|messages and calls are end-to-end|messages (you send )?to this chat and calls|il codice di sicurezza di .{1,60} è cambiato|your security code with|hai bloccato questo contatto|hai sbloccato questo contatto|you blocked this contact|you unblocked this contact|.{1,60} ha cambiato numero di telefono(\\.| in un nuovo numero\\b.*)?$|.{1,60} changed their phone number(\\.| to a new number\\b.*)?$|(hai|.{1,60} ha) (attivato|disattivato) (i messaggi effimeri|la privacy avanzata)|you turned (on|off) disappearing messages)/i;
 const SYS_LRM_RE = /crittografat|end-to-end|codice di sicurezza|security code|cambiato numero|changed their phone|messaggi effimeri|disappearing messages|privacy avanzata|advanced chat privacy|account business|business account/i;
 
 function extractAtts(text){
