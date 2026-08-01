@@ -6,7 +6,6 @@
 <meta name="theme-color" content="#008069">
 <title>Archivio Chat WhatsApp</title>
 <link rel="manifest" href="manifest.webmanifest">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
   :root{
     --hdr:#008069; --hdr-dark:#006a56; --bg:#efe7dd; --me:#d9fdd3; --other:#ffffff;
@@ -94,15 +93,45 @@
   .missing{font-size:12.5px;color:#8696a0;font-style:italic;padding:2px 0}
   .omitted{font-size:13px;color:#8696a0;font-style:italic}
 
+  /* ---- Galleria media ---- */
+  #gallery{position:fixed;inset:0;background:#fff;z-index:25;display:none;flex-direction:column}
+  body.inGallery #gallery{display:flex}
+  body.inChat #hdrMain{cursor:pointer}
+  #galHdr{background:var(--hdr);color:#fff;display:flex;align-items:center;gap:4px;padding:10px 8px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  #galHdr .iconBtn{display:block}
+  #galTitle{font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #galSub{font-size:12px;opacity:.85}
+  #galTabs{display:flex;background:var(--hdr)}
+  .galTab{flex:1;text-align:center;padding:11px 4px;color:#ffffffb3;font-size:13.5px;font-weight:600;border:none;background:none;border-bottom:3px solid transparent}
+  .galTab.on{color:#fff;border-bottom-color:#fff}
+  #galBody{flex:1;overflow-y:auto;background:#fff;padding-bottom:28px;overscroll-behavior:contain}
+  .galMonth{font-size:13px;color:#54656f;font-weight:600;padding:14px 12px 6px}
+  .galGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:0 2px}
+  .galTile{position:relative;aspect-ratio:1;background:#e9edef;overflow:hidden;border:none;padding:0;cursor:pointer}
+  .galTile img,.galTile video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+  .galPlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:26px;text-shadow:0 1px 6px rgba(0,0,0,.7);pointer-events:none;z-index:1}
+  .galRow{display:flex;align-items:center;gap:12px;padding:11px 14px;border:none;border-bottom:1px solid #f0f2f5;width:100%;text-align:left;background:none}
+  .galRow:active{background:#f5f6f6}
+  .galRow .ric{width:40px;height:40px;border-radius:8px;background:#e9edef;display:flex;align-items:center;justify-content:center;font-size:18px;flex:0 0 auto}
+  .galRow .rmain{flex:1;min-width:0}
+  .galRow .rt{font-size:14.5px;color:#111b21;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .galRow .rs{font-size:12px;color:#8696a0;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .galRow a{color:#027eb5;text-decoration:none}
+  .galEmpty{text-align:center;color:#8696a0;padding:60px 20px;font-size:14px}
+
   #dateChip{position:fixed;left:50%;transform:translateX(-50%);top:64px;background:#ffffffee;color:#54656f;font-size:12.5px;padding:5px 12px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.2);z-index:15;opacity:0;transition:opacity .25s;pointer-events:none}
   #dateChip.show{opacity:1}
 
-  #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:50;display:flex;align-items:center;justify-content:center}
+  #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:50;display:flex;align-items:center;justify-content:center}
   #lightbox[hidden]{display:none}
-  #lightbox img{max-width:100vw;max-height:100dvh;object-fit:contain}
+  #lbMedia{max-width:100vw;max-height:100dvh;display:flex;align-items:center;justify-content:center}
+  #lbMedia img,#lbMedia video{max-width:100vw;max-height:100dvh;object-fit:contain}
+  #lbClose{position:fixed;top:14px;right:14px;background:rgba(0,0,0,.45);color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-size:18px;z-index:51}
+  #lbGoto{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:#ffffffee;color:#111b21;border:none;border-radius:20px;padding:10px 18px;font-size:14px;font-weight:600;z-index:51;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 
   #overlay{position:fixed;inset:0;background:rgba(255,255,255,.94);z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-size:15px;color:var(--hdr-dark);text-align:center;padding:20px}
   #overlay[hidden]{display:none}
+  #overlayTxt{white-space:pre-line}
   .spin{width:36px;height:36px;border:4px solid #cde9e2;border-top-color:var(--hdr);border-radius:50%;animation:sp 1s linear infinite}
   @keyframes sp{to{transform:rotate(360deg)}}
 
@@ -156,6 +185,7 @@
   <div class="sec">Formato data del file</div>
   <button class="mi" id="fmtToggle">Giorno/Mese (gg/mm) ✓</button>
   <div class="sec">Chat</div>
+  <button class="mi" id="openGal">Media, link e documenti</button>
   <button class="mi" id="addMedia">Aggiungi media…</button>
   <button class="mi" id="renameChat">Rinomina chat…</button>
 </div>
@@ -177,8 +207,30 @@
   <div id="bottomSentinel"></div>
 </main>
 
+<div id="gallery">
+  <div id="galHdr">
+    <button class="iconBtn" id="galBack" title="Indietro" aria-label="Indietro">
+      <svg viewBox="0 0 24 24"><path d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20v-2z"/></svg>
+    </button>
+    <div style="flex:1;min-width:0">
+      <div id="galTitle"></div>
+      <div id="galSub">Media, link e documenti</div>
+    </div>
+  </div>
+  <div id="galTabs">
+    <button class="galTab on" data-t="media">Media</button>
+    <button class="galTab" data-t="link">Link</button>
+    <button class="galTab" data-t="doc">Documenti</button>
+  </div>
+  <div id="galBody"></div>
+</div>
+
 <div id="dateChip"></div>
-<div id="lightbox" hidden><img id="lightboxImg" alt=""></div>
+<div id="lightbox" hidden>
+  <button id="lbClose" aria-label="Chiudi">✕</button>
+  <div id="lbMedia"></div>
+  <button id="lbGoto" hidden>Mostra nella chat</button>
+</div>
 <div id="overlay" hidden><div class="spin"></div><div id="overlayTxt">Caricamento…</div></div>
 
 <input type="file" id="fileInput" accept=".zip,.txt,text/plain,application/zip" hidden>
@@ -349,6 +401,84 @@ const fmtMonth = new Intl.DateTimeFormat("it-IT", { month: "long", year: "numeri
 function msgDate(m){ return new Date(m.y, mon(m) - 1, day(m)); }
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 
+/* ================= Lettore ZIP in streaming (con ZIP64) ================= */
+/* ZIPREADER-START */
+async function readZipEntries(file){
+  const tailSize = Math.min(file.size, 131072);
+  const tailBuf = await file.slice(file.size - tailSize).arrayBuffer();
+  const tail = new DataView(tailBuf);
+  let eocd = -1;
+  for (let i = tail.byteLength - 22; i >= 0; i--){
+    if (tail.getUint32(i, true) === 0x06054b50){ eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error("Archivio ZIP non valido o incompleto.");
+  let count = tail.getUint16(eocd + 10, true);
+  let cdSize = tail.getUint32(eocd + 12, true);
+  let cdOff  = tail.getUint32(eocd + 16, true);
+  if (count === 0xFFFF || cdSize === 0xFFFFFFFF || cdOff === 0xFFFFFFFF){
+    const locPos = eocd - 20;
+    if (locPos < 0 || tail.getUint32(locPos, true) !== 0x07064b50)
+      throw new Error("Archivio ZIP64 non valido.");
+    const z64Off = Number(tail.getBigUint64(locPos + 8, true));
+    const z64 = new DataView(await file.slice(z64Off, z64Off + 56).arrayBuffer());
+    if (z64.getUint32(0, true) !== 0x06064b50) throw new Error("Archivio ZIP64 non valido.");
+    count  = Number(z64.getBigUint64(32, true));
+    cdSize = Number(z64.getBigUint64(40, true));
+    cdOff  = Number(z64.getBigUint64(48, true));
+  }
+  const cd = new DataView(await file.slice(cdOff, cdOff + cdSize).arrayBuffer());
+  const td = new TextDecoder();
+  const entries = [];
+  let p = 0;
+  while (p + 46 <= cd.byteLength && cd.getUint32(p, true) === 0x02014b50){
+    const gpFlag  = cd.getUint16(p + 8, true);
+    const method  = cd.getUint16(p + 10, true);
+    let compSize  = cd.getUint32(p + 20, true);
+    let uncompSize = cd.getUint32(p + 24, true);
+    const nameLen  = cd.getUint16(p + 28, true);
+    const extraLen = cd.getUint16(p + 30, true);
+    const commLen  = cd.getUint16(p + 32, true);
+    let lho = cd.getUint32(p + 42, true);
+    const name = td.decode(new Uint8Array(cd.buffer, cd.byteOffset + p + 46, nameLen));
+    let ep = p + 46 + nameLen;
+    const extraEnd = ep + extraLen;
+    while (ep + 4 <= extraEnd){
+      const id = cd.getUint16(ep, true), sz = cd.getUint16(ep + 2, true);
+      if (id === 0x0001){
+        let q = ep + 4;
+        if (uncompSize === 0xFFFFFFFF){ uncompSize = Number(cd.getBigUint64(q, true)); q += 8; }
+        if (compSize === 0xFFFFFFFF){ compSize = Number(cd.getBigUint64(q, true)); q += 8; }
+        if (lho === 0xFFFFFFFF){ lho = Number(cd.getBigUint64(q, true)); q += 8; }
+      }
+      ep += 4 + sz;
+    }
+    if (!name.endsWith("/"))
+      entries.push({ name, method, compSize, uncompSize, lho, encrypted: !!(gpFlag & 1) });
+    p += 46 + nameLen + extraLen + commLen;
+  }
+  return entries;
+}
+
+async function entryBlob(file, e, mime){
+  if (e.encrypted) throw new Error("Voce cifrata non supportata: " + e.name);
+  const lh = new DataView(await file.slice(e.lho, e.lho + 30).arrayBuffer());
+  if (lh.getUint32(0, true) !== 0x04034b50) throw new Error("Voce ZIP corrotta: " + e.name);
+  const nameLen = lh.getUint16(26, true), extraLen = lh.getUint16(28, true);
+  const start = e.lho + 30 + nameLen + extraLen;
+  const comp = file.slice(start, start + e.compSize);
+  if (e.method === 0) return new Blob([comp], { type: mime });
+  if (e.method === 8){
+    const stream = comp.stream().pipeThrough(new DecompressionStream("deflate-raw"));
+    const raw = await new Response(stream).blob();
+    return new Blob([raw], { type: mime });
+  }
+  throw new Error("Compressione non supportata (metodo " + e.method + "): " + e.name);
+}
+/* ZIPREADER-END */
+function fmtMB(b){
+  return b >= 1073741824 ? (b / 1073741824).toFixed(2) + " GB" : Math.max(1, Math.round(b / 1048576)) + " MB";
+}
+
 /* ================= Media ================= */
 const EXT_MIME = { jpg:"image/jpeg", jpeg:"image/jpeg", png:"image/png", gif:"image/gif", webp:"image/webp", bmp:"image/bmp",
   mp4:"video/mp4", "3gp":"video/3gpp", mov:"video/quicktime", webm:"video/webm", mkv:"video/x-matroska",
@@ -386,7 +516,10 @@ const imgObserver = new IntersectionObserver(entries => {
       if (!url){ el.textContent = "🖼️ non disponibile"; return; }
       const img = document.createElement("img");
       img.src = url; img.alt = el.dataset.f; img.loading = "lazy";
-      img.addEventListener("click", () => { $("lightboxImg").src = url; $("lightbox").hidden = false; });
+      img.addEventListener("click", () => {
+        const r = img.closest("[data-idx]");
+        openLightbox(img.alt, false, r ? +r.dataset.idx : null);
+      });
       el.replaceWith(img);
     });
   }
@@ -574,21 +707,23 @@ $("fileInput").addEventListener("change", async e => {
   const f = e.target.files[0];
   if (!f) return;
   showOverlay("Lettura di " + f.name + "…");
+  let wakeLock = null, savedId = null;
   try {
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
-    let txt = null, name = "", zipMedia = [];
+    if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request("screen").catch(() => null);
+
+    let txt = null, name = "", zipEntries = [];
     if (/\.zip$/i.test(f.name)){
-      const zip = await JSZip.loadAsync(f);
-      const txts = [];
-      zip.forEach((path, entry) => {
-        if (entry.dir) return;
-        if (base(path).endsWith(".txt")) txts.push(entry);
-        else zipMedia.push(entry);
-      });
+      showOverlay("Lettura indice archivio (" + fmtMB(f.size) + ")…");
+      const entries = await readZipEntries(f);
+      const txts = entries.filter(en => base(en.name).endsWith(".txt"));
       const chatEntry = txts.find(t => base(t.name).startsWith("_chat")) ||
-                        txts.find(t => /chat/i.test(t.name)) || txts[0];
+                        txts.find(t => /chat/i.test(t.name)) ||
+                        txts.sort((a, b) => a.uncompSize - b.uncompSize)[0];
       if (!chatEntry) throw new Error("Nessun file .txt trovato nello ZIP.");
-      txt = await chatEntry.async("string");
+      zipEntries = entries.filter(en => en !== chatEntry);
+      showOverlay("Lettura messaggi…");
+      txt = await (await entryBlob(f, chatEntry, "text/plain")).text();
       name = baseName(chatEntry.name).replace(/\.txt$/i, "");
       if (/^_chat$/i.test(name)) name = f.name.replace(/\.zip$/i, "");
     } else {
@@ -610,26 +745,51 @@ $("fileInput").addEventListener("change", async e => {
     const senders = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(x => x[0]);
     if (await chatBloccata(name, senders)) throw new Error("prova con una qualunque altra persona 🙃");
 
-    await dbPut("msgs", { id, list: parsed });
-    // Salva media
-    for (let i = 0; i < zipMedia.length; i++){
-      if (i % 10 === 0){ showOverlay("Salvataggio media " + (i + 1) + "/" + zipMedia.length + "…"); await tick(); }
-      const entry = zipMedia[i];
-      const buf = await entry.async("arraybuffer");
-      const blob = new Blob([buf], { type: EXT_MIME[ext(entry.name)] || "application/octet-stream" });
-      await dbPut("media", { chat: id, name: base(entry.name), blob });
+    // Verifica spazio disponibile prima di salvare i media
+    const needBytes = zipEntries.reduce((s, en) => s + en.uncompSize, 0);
+    if (needBytes && navigator.storage && navigator.storage.estimate){
+      const est = await navigator.storage.estimate().catch(() => null);
+      if (est && est.quota - est.usage < needBytes + 52428800)
+        throw new Error("Spazio insufficiente: i media richiedono ~" + fmtMB(needBytes) +
+          ", disponibili ~" + fmtMB(Math.max(0, est.quota - est.usage)) +
+          ". Libera spazio oppure esporta la chat senza media.");
     }
+
+    await dbPut("msgs", { id, list: parsed });
+    savedId = id;
+
+    // Salvataggio media in streaming, uno alla volta
+    const totBytes = zipEntries.reduce((s, en) => s + en.compSize, 0);
+    let saved = 0, failed = 0, doneBytes = 0;
+    for (const entry of zipEntries){
+      showOverlay("Salvataggio media " + (saved + failed + 1) + "/" + zipEntries.length +
+        "\n" + fmtMB(doneBytes) + " di " + fmtMB(totBytes));
+      try {
+        const blob = await entryBlob(f, entry, EXT_MIME[ext(entry.name)] || "application/octet-stream");
+        await dbPut("media", { chat: id, name: base(entry.name), blob });
+        saved++;
+      } catch (me){ failed++; }
+      doneBytes += entry.compSize;
+    }
+
     const meta = { id, name, count: parsed.length,
       dateMode: dm, me: null, created: Date.now(),
       senders,
-      mediaCount: zipMedia.length };
+      mediaCount: saved };
     await dbPut("chats", meta);
+    savedId = null;
     await openChat(meta);
+    if (failed) toast(failed + " media non importati");
     if (meta.senders.length >= 2) $("whoBar").hidden = false;
   } catch (err){
-    alert("Errore: " + err.message);
+    if (savedId) await deleteChatData(savedId).catch(() => {});
+    let msg = err.message;
+    if (err.name === "NotReadableError" || /could not be read/i.test(msg))
+      msg = "Il file non è più leggibile. Assicurati che sia salvato in locale (es. cartella Download, non su Drive/cloud), non spostarlo durante l'importazione e tieni Chrome in primo piano.";
+    alert("Errore: " + msg);
     renderHome();
   } finally {
+    if (wakeLock) wakeLock.release().catch(() => {});
     hideOverlay();
     e.target.value = "";
   }
@@ -742,7 +902,10 @@ function goHome(){
   renderHome();
 }
 $("btnBack").addEventListener("click", () => { if (history.state && history.state.chat) history.back(); else goHome(); });
-window.addEventListener("popstate", () => { if (current) goHome(); });
+window.addEventListener("popstate", () => {
+  if (document.body.classList.contains("inGallery")) closeGallery();
+  else if (current) goHome();
+});
 
 function closeBars(){
   $("searchBar").hidden = true; $("jumpBar").hidden = true;
@@ -865,6 +1028,7 @@ function updateFmtLabel(){
   $("fmtToggle").textContent = dateMode === "dmy" ? "Giorno/Mese (gg/mm) ✓" : "Mese/Giorno (mm/gg) ✓";
 }
 $("addMedia").onclick = () => { $("menuSheet").hidden = true; $("mediaInput").click(); };
+$("openGal").onclick = () => { $("menuSheet").hidden = true; openGallery(); };
 $("renameChat").onclick = async () => {
   $("menuSheet").hidden = true;
   if (!current) return;
@@ -876,8 +1040,198 @@ $("renameChat").onclick = async () => {
   }
 };
 
+/* ================= Galleria media (stile WhatsApp) ================= */
+let galItems = { media: [], link: [], doc: [] };
+let galTab = "media", galRendered = 0, pendingJump = null;
+const GAL_CHUNK = 60;
+const URL_RE_G = /(https?:\/\/[^\s<>"']+)/g;
+
+function buildGalleryIndex(){
+  const media = [], link = [], doc = [];
+  for (let i = 0; i < messages.length; i++){
+    const m = messages[i];
+    for (const a of (m.atts || [])){
+      if (!mediaNames.has(base(a))) continue;
+      const x = ext(a);
+      if (IMG.has(x) || VID.has(x)) media.push({ name: a, idx: i, video: VID.has(x) });
+      else if (!AUD.has(x)) doc.push({ name: a, idx: i });
+    }
+    if (m.text){
+      const found = m.text.match(URL_RE_G);
+      if (found) for (const u of found) link.push({ url: u, idx: i });
+    }
+  }
+  media.reverse(); link.reverse(); doc.reverse();
+  galItems = { media, link, doc };
+}
+
+function openGallery(){
+  if (!current) return;
+  closeBars();
+  buildGalleryIndex();
+  $("galTitle").textContent = current.name;
+  document.querySelector('.galTab[data-t="media"]').textContent = "Media (" + galItems.media.length + ")";
+  document.querySelector('.galTab[data-t="link"]').textContent = "Link (" + galItems.link.length + ")";
+  document.querySelector('.galTab[data-t="doc"]').textContent = "Doc (" + galItems.doc.length + ")";
+  document.body.classList.add("inGallery");
+  history.pushState({ gal: current.id }, "");
+  setGalTab("media");
+}
+function closeGallery(){
+  document.body.classList.remove("inGallery");
+  $("galBody").innerHTML = "";
+  if (pendingJump != null){ const i = pendingJump; pendingJump = null; jumpTo(i, true); }
+}
+$("hdrMain").addEventListener("click", () => {
+  if (current && !document.body.classList.contains("inGallery")) openGallery();
+});
+$("galBack").addEventListener("click", () => history.back());
+document.querySelectorAll(".galTab").forEach(b => b.addEventListener("click", () => setGalTab(b.dataset.t)));
+
+function setGalTab(t){
+  galTab = t; galRendered = 0;
+  document.querySelectorAll(".galTab").forEach(b => b.classList.toggle("on", b.dataset.t === t));
+  const body = $("galBody");
+  body.innerHTML = ""; body.dataset.lastKey = ""; body.scrollTop = 0;
+  renderGalChunk();
+}
+function renderGalChunk(){
+  const items = galItems[galTab];
+  const body = $("galBody");
+  if (!items.length){
+    body.innerHTML = '<div class="galEmpty">' +
+      ({ media: "Nessun media in archivio", link: "Nessun link", doc: "Nessun documento" })[galTab] + "</div>";
+    return;
+  }
+  let lastKey = body.dataset.lastKey || "";
+  let grid = body.lastElementChild && body.lastElementChild.classList.contains("galGrid") ? body.lastElementChild : null;
+  const to = Math.min(items.length, galRendered + GAL_CHUNK);
+  for (let k = galRendered; k < to; k++){
+    const it = items[k];
+    const m = messages[it.idx];
+    const key = m.y + "-" + mon(m);
+    if (key !== lastKey){
+      lastKey = key;
+      const h = document.createElement("div");
+      h.className = "galMonth";
+      h.textContent = cap(fmtMonth.format(msgDate(m)));
+      body.appendChild(h);
+      grid = null;
+    }
+    if (galTab === "media"){
+      if (!grid){ grid = document.createElement("div"); grid.className = "galGrid"; body.appendChild(grid); }
+      grid.appendChild(galTile(it));
+    } else {
+      body.appendChild(galTab === "link" ? galLinkRow(it) : galDocRow(it));
+    }
+  }
+  body.dataset.lastKey = lastKey;
+  galRendered = to;
+  if (to < items.length){
+    const s = document.createElement("div");
+    s.style.height = "1px";
+    body.appendChild(s);
+    new IntersectionObserver((en, obs) => {
+      if (en[0].isIntersecting){ obs.disconnect(); s.remove(); renderGalChunk(); }
+    }, { root: body, rootMargin: "800px" }).observe(s);
+  }
+}
+
+const galObs = new IntersectionObserver(entries => {
+  for (const en of entries){
+    if (!en.isIntersecting) continue;
+    galObs.unobserve(en.target);
+    loadTile(en.target);
+  }
+}, { root: null, rootMargin: "400px" });
+
+function galTile(it){
+  const b = document.createElement("button");
+  b.className = "galTile";
+  b.dataset.f = it.name;
+  if (it.video){ b.dataset.v = "1"; b.innerHTML = '<div class="galPlay">▶</div>'; }
+  b.addEventListener("click", () => openLightbox(it.name, it.video, it.idx));
+  galObs.observe(b);
+  return b;
+}
+async function loadTile(b){
+  const url = await mediaURL(b.dataset.f);
+  if (!url || !b.isConnected) return;
+  if (b.dataset.v){
+    const v = document.createElement("video");
+    v.muted = true; v.playsInline = true; v.preload = "metadata";
+    v.src = url;
+    v.addEventListener("loadedmetadata", () => { try { v.currentTime = 0.1; } catch (e){} }, { once: true });
+    b.insertBefore(v, b.firstChild);
+  } else {
+    const img = document.createElement("img");
+    img.loading = "lazy"; img.src = url; img.alt = b.dataset.f;
+    b.appendChild(img);
+  }
+}
+function galLinkRow(it){
+  const m = messages[it.idx];
+  const row = document.createElement("button");
+  row.className = "galRow";
+  const host = (it.url.match(/^https?:\/\/([^\/]+)/) || [, ""])[1];
+  row.innerHTML = '<div class="ric">🔗</div><div class="rmain">' +
+    '<div class="rt"><a href="' + esc(it.url) + '" target="_blank" rel="noopener">' + esc(it.url) + "</a></div>" +
+    '<div class="rs">' + esc(host) + (m.sender ? " · " + esc(m.sender) : "") + " · " + cap(fmtShort.format(msgDate(m))) + "</div></div>";
+  row.querySelector("a").addEventListener("click", ev => ev.stopPropagation());
+  row.addEventListener("click", () => { pendingJump = it.idx; history.back(); });
+  return row;
+}
+function galDocRow(it){
+  const m = messages[it.idx];
+  const row = document.createElement("button");
+  row.className = "galRow";
+  row.innerHTML = '<div class="ric">📄</div><div class="rmain">' +
+    '<div class="rt">' + esc(it.name) + "</div>" +
+    '<div class="rs">' + (ext(it.name) || "file").toUpperCase() + " · " + cap(fmtShort.format(msgDate(m))) + "</div></div>";
+  row.addEventListener("click", async () => {
+    const url = await mediaURL(it.name);
+    if (url) dlLink(it.name, url).click();
+  });
+  return row;
+}
+
+/* ================= Visualizzatore a schermo intero ================= */
+let lbIdx = null;
+async function openLightbox(name, isVideo, idx){
+  const url = await mediaURL(name);
+  if (!url) return;
+  const box = $("lbMedia");
+  box.innerHTML = "";
+  if (isVideo){
+    const v = document.createElement("video");
+    v.controls = true; v.autoplay = true; v.playsInline = true; v.src = url;
+    v.addEventListener("click", ev => ev.stopPropagation());
+    box.appendChild(v);
+  } else {
+    const img = document.createElement("img");
+    img.src = url; img.alt = name;
+    box.appendChild(img);
+  }
+  lbIdx = idx != null && !Number.isNaN(idx) ? idx : null;
+  $("lbGoto").hidden = lbIdx == null || !document.body.classList.contains("inGallery");
+  $("lightbox").hidden = false;
+}
+function closeLightbox(){
+  $("lightbox").hidden = true;
+  $("lbMedia").innerHTML = "";
+  lbIdx = null;
+}
+
 /* ================= Vari ================= */
-$("lightbox").addEventListener("click", () => { $("lightbox").hidden = true; $("lightboxImg").src = ""; });
+$("lightbox").addEventListener("click", closeLightbox);
+$("lbClose").addEventListener("click", closeLightbox);
+$("lbGoto").addEventListener("click", e => {
+  e.stopPropagation();
+  const i = lbIdx;
+  closeLightbox();
+  if (document.body.classList.contains("inGallery")){ pendingJump = i; history.back(); }
+  else if (i != null) jumpTo(i, true);
+});
 function showOverlay(t){ $("overlayTxt").textContent = t; $("overlay").hidden = false; }
 function hideOverlay(){ $("overlay").hidden = true; }
 function toast(t){
