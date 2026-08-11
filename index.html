@@ -239,11 +239,12 @@
   <button class="mi" id="fmtToggle">Giorno/Mese (gg/mm) ✓</button>
   <div class="sec">Chat</div>
   <button class="mi" id="openGal">Media, link e documenti</button>
+  <button class="mi" id="updateChat">Aggiorna con nuovo export…</button>
   <button class="mi" id="setAvatar">Foto della chat…</button>
   <button class="mi" id="delAvatar" style="display:none">Rimuovi foto</button>
   <button class="mi" id="addMedia">Aggiungi media…</button>
   <button class="mi" id="renameChat">Rinomina chat…</button>
-  <div class="sec" style="text-align:right;opacity:.7">v1.8</div>
+  <div class="sec" style="text-align:right;opacity:.7">v1.9</div>
 </div>
 
 <div id="home">
@@ -253,7 +254,7 @@
     <p>Tocca <b>+</b> e apri il file <b>.zip</b> esportato da WhatsApp (con media) oppure il solo <b>.txt</b>.<br>La chat viene salvata sul dispositivo: da qui in poi la ritrovi sempre in questa lista, media compresi.</p>
     <p style="font-size:12px">WhatsApp → chat → ⋮ → Altro → Esporta chat</p>
   </div>
-  <div id="homeHint">Tutto resta in locale sul tuo dispositivo: nessun dato viene inviato a server. · v1.8</div>
+  <div id="homeHint">Tutto resta in locale sul tuo dispositivo: nessun dato viene inviato a server. · v1.9</div>
 </div>
 <button id="fab" title="Importa export" aria-label="Importa export"><svg viewBox="0 0 24 24" width="26" height="26" fill="#fff"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg></button>
 
@@ -806,8 +807,49 @@ chatEl.addEventListener("scroll", () => {
 
 /* ================= Import ================= */
 $("fab").addEventListener("click", () => $("fileInput").click());
+// Firma di un messaggio: indipendente dal formato data e dalla presenza dei media,
+// così un export "senza media" riconosce gli stessi messaggi di uno "con media".
+const OMIT_TOKEN_RE = /<?\s*(?:Media omessi|Media omitted|immagine omessa|image omitted|video omesso|video omitted|audio omesso|audio omitted|sticker non incluso|sticker omitted|GIF esclusa|GIF omitted|documento omesso|document omitted|Scheda contatto omessa|Contact card omitted)\s*>?\.?/ig;
+function msgSig(m){
+  const t = (m.text || "").replace(OMIT_TOKEN_RE, "").replace(/\s+/g, " ").trim();
+  return m.y + "-" + m.d1 + "-" + m.d2 + " " + m.hh + ":" + m.mi + "|" + (m.sender || "") + "|" + t;
+}
+
+async function readExport(f){
+  let txt = null, name = "", zipEntries = [];
+  if (/\.zip$/i.test(f.name)){
+    showOverlay("Lettura indice archivio (" + fmtMB(f.size) + ")…");
+    const entries = await readZipEntries(f);
+    const txts = entries.filter(en => base(en.name).endsWith(".txt"));
+    const chatEntry = txts.find(t => base(t.name).startsWith("_chat")) ||
+                      txts.find(t => /chat/i.test(t.name)) ||
+                      txts.sort((a, b) => a.uncompSize - b.uncompSize)[0];
+    if (!chatEntry) throw new Error("Nessun file .txt trovato nello ZIP.");
+    zipEntries = entries.filter(en => en !== chatEntry);
+    showOverlay("Lettura messaggi…");
+    txt = await (await entryBlob(f, chatEntry, "text/plain")).text();
+    name = baseName(chatEntry.name).replace(/\.txt$/i, "");
+    if (/^_chat$/i.test(name)) name = f.name.replace(/\.zip$/i, "");
+  } else {
+    txt = await f.text();
+    name = f.name.replace(/\.txt$/i, "");
+  }
+  name = name.replace(/^whatsapp chat (?:con|with)\s*/i, "").replace(/^chat whatsapp (?:con|with)\s*/i, "");
+  return { txt, name, zipEntries };
+}
+
+let importMode = "new", updateTargetId = null;
+$("updateChat").onclick = () => {
+  $("menuSheet").hidden = true;
+  if (!current) return;
+  importMode = "update"; updateTargetId = current.id;
+  $("fileInput").click();
+};
+
 $("fileInput").addEventListener("change", async e => {
   const f = e.target.files[0];
+  const mode = importMode, targetId = updateTargetId;
+  importMode = "new"; updateTargetId = null;
   if (!f) return;
   showOverlay("Lettura di " + f.name + "…");
   let wakeLock = null, savedId = null;
@@ -815,25 +857,8 @@ $("fileInput").addEventListener("change", async e => {
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
     if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request("screen").catch(() => null);
 
-    let txt = null, name = "", zipEntries = [];
-    if (/\.zip$/i.test(f.name)){
-      showOverlay("Lettura indice archivio (" + fmtMB(f.size) + ")…");
-      const entries = await readZipEntries(f);
-      const txts = entries.filter(en => base(en.name).endsWith(".txt"));
-      const chatEntry = txts.find(t => base(t.name).startsWith("_chat")) ||
-                        txts.find(t => /chat/i.test(t.name)) ||
-                        txts.sort((a, b) => a.uncompSize - b.uncompSize)[0];
-      if (!chatEntry) throw new Error("Nessun file .txt trovato nello ZIP.");
-      zipEntries = entries.filter(en => en !== chatEntry);
-      showOverlay("Lettura messaggi…");
-      txt = await (await entryBlob(f, chatEntry, "text/plain")).text();
-      name = baseName(chatEntry.name).replace(/\.txt$/i, "");
-      if (/^_chat$/i.test(name)) name = f.name.replace(/\.zip$/i, "");
-    } else {
-      txt = await f.text();
-      name = f.name.replace(/\.txt$/i, "");
-    }
-    name = name.replace(/^whatsapp chat (?:con|with)\s*/i, "").replace(/^chat whatsapp (?:con|with)\s*/i, "");
+    const exp = await readExport(f);
+    const txt = exp.txt, name = exp.name, zipEntries = exp.zipEntries;
 
     showOverlay("Analisi messaggi…");
     await tick();
@@ -847,6 +872,11 @@ $("fileInput").addEventListener("change", async e => {
     for (const m of parsed) if (m.sender) counts.set(m.sender, (counts.get(m.sender) || 0) + 1);
     const senders = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(x => x[0]);
     if (await chatBloccata(name, senders)) throw new Error("prova con una qualunque altra persona 🙃");
+
+    if (mode === "update" && targetId){
+      await mergeExport(f, targetId, parsed, senders, zipEntries);
+      return;
+    }
 
     // Verifica spazio disponibile prima di salvare i media
     const needBytes = zipEntries.reduce((s, en) => s + en.uncompSize, 0);
@@ -917,6 +947,77 @@ $("mediaInput").addEventListener("change", async e => {
 });
 
 const tick = () => new Promise(r => setTimeout(r, 20));
+
+/* ================= Aggiornamento chat esistente ================= */
+async function mergeExport(f, targetId, parsed, senders, zipEntries){
+  const meta = await dbGet("chats", targetId);
+  if (!meta) throw new Error("Chat non più presente in archivio.");
+  const rec = await dbGet("msgs", targetId);
+  const oldList = rec ? rec.list : [];
+
+  const oldS = new Set(meta.senders || []);
+  if (oldS.size && senders.length && !senders.some(s => oldS.has(s))){
+    hideOverlay();
+    if (!confirm("Questo export sembra di un'altra conversazione (" + senders.slice(0, 3).join(", ") +
+                 ").\nAggiornare comunque \"" + meta.name + "\"?")) return;
+    showOverlay("Confronto messaggi…");
+  }
+
+  showOverlay("Confronto messaggi…");
+  await tick();
+  const mult = new Map();
+  for (const m of oldList){ const k = msgSig(m); mult.set(k, (mult.get(k) || 0) + 1); }
+  const fresh = [];
+  for (const m of parsed){
+    const k = msgSig(m);
+    const c = mult.get(k) || 0;
+    if (c > 0) mult.set(k, c - 1);
+    else fresh.push(m);
+  }
+  if (!fresh.length){
+    hideOverlay();
+    alert("Nessun nuovo messaggio: l'archivio è già aggiornato.");
+    return;
+  }
+
+  const dm = meta.dateMode || "dmy";
+  const sortKey = m => m.y * 100000000 + (dm === "dmy" ? m.d2 : m.d1) * 1000000 +
+                       (dm === "dmy" ? m.d1 : m.d2) * 10000 + m.hh * 100 + (+m.mi);
+  const lastOld = oldList.length ? sortKey(oldList[oldList.length - 1]) : -1;
+  let merged = oldList.concat(fresh);
+  if (!fresh.every(m => sortKey(m) >= lastOld))
+    merged = merged.map((m, i) => ({ m, i, k: sortKey(m) }))
+                   .sort((a, b) => a.k - b.k || a.i - b.i).map(x => x.m);
+
+  await dbPut("msgs", { id: targetId, list: merged });
+
+  // Salva soltanto i media citati dai nuovi messaggi e non già presenti
+  const need = new Set();
+  for (const m of fresh) for (const a of (m.atts || [])) need.add(base(a));
+  const have = new Set(await mediaKeys(targetId));
+  const toSave = zipEntries.filter(en => need.has(base(en.name)) && !have.has(base(en.name)));
+  const tot = toSave.reduce((s, en) => s + en.compSize, 0);
+  let added = 0, doneBytes = 0;
+  for (const en of toSave){
+    showOverlay("Nuovi media " + (added + 1) + "/" + toSave.length +
+      "\n" + fmtMB(doneBytes) + " di " + fmtMB(tot));
+    try {
+      const blob = await entryBlob(f, en, EXT_MIME[ext(en.name)] || "application/octet-stream");
+      await dbPut("media", { chat: targetId, name: base(en.name), blob });
+      added++;
+    } catch (e){}
+    doneBytes += en.compSize;
+  }
+
+  meta.count = merged.length;
+  meta.senders = [...new Set([...(meta.senders || []), ...senders])];
+  meta.mediaCount = (meta.mediaCount || 0) + added;
+  meta.updated = Date.now();
+  await dbPut("chats", meta);
+  await openChat(meta);
+  toast("Aggiunti " + fresh.length.toLocaleString("it-IT") + " messaggi" +
+        (added ? " e " + added + " media" : ""));
+}
 
 /* ================= Home ================= */
 async function renderHome(){
