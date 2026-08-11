@@ -418,8 +418,9 @@
   <button class="mi" id="delAvatar" style="display:none">Rimuovi foto</button>
   <button class="mi" id="addMedia">Aggiungi media…</button>
   <button class="mi" id="renameChat">Rinomina chat…</button>
+  <button class="mi" id="dedupMedia">Unisci media duplicati (per contenuto)</button>
   <button class="mi" id="dedupChat">Rimuovi messaggi duplicati</button>
-  <div class="sec" style="text-align:right;opacity:.7">v2.4</div>
+  <div class="sec" style="text-align:right;opacity:.7">v2.5</div>
 </div>
 
 <div class="bar" id="homeSearchBar" hidden>
@@ -436,7 +437,7 @@
     <p>Tocca <b>+</b> e apri il file <b>.zip</b> esportato da WhatsApp (con media) oppure il solo <b>.txt</b>.<br>La chat viene salvata sul dispositivo: da qui in poi la ritrovi sempre in questa lista, media compresi.</p>
     <p style="font-size:12px">WhatsApp → chat → ⋮ → Altro → Esporta chat</p>
   </div>
-  <div id="homeHint">Tutto resta in locale sul tuo dispositivo: nessun dato viene inviato a server. · v2.4</div>
+  <div id="homeHint">Tutto resta in locale sul tuo dispositivo: nessun dato viene inviato a server. · v2.5</div>
 </div>
 <button id="fab" title="Importa export" aria-label="Importa export"><svg viewBox="0 0 24 24" width="26" height="26" fill="#fff"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg></button>
 
@@ -902,6 +903,124 @@ function dlLink(name, url){
   const a = document.createElement("a");
   a.href = url; a.download = name; a.textContent = "⬇️ " + name; a.className = "mediaBtn";
   return a;
+}
+
+/* ================= Unione media duplicati (confronto sul contenuto) ================= */
+function mediaMetaList(chatId){
+  return new Promise((res, rej) => {
+    const out = [];
+    const t = db.transaction("media", "readonly");
+    t.objectStore("media").index("chat").openCursor(IDBKeyRange.only(chatId)).onsuccess = e => {
+      const c = e.target.result;
+      if (c){
+        const b = c.value.blob;
+        out.push({ name: c.value.name, size: b ? b.size : 0 });
+        c.continue();
+      }
+    };
+    t.oncomplete = () => res(out);
+    t.onerror = () => rej(t.error);
+  });
+}
+async function sha256Buf(buf){
+  const d = await crypto.subtle.digest("SHA-256", buf);
+  return [...new Uint8Array(d)].map(x => x.toString(16).padStart(2, "0")).join("");
+}
+// Raggruppa per dimensione: solo i gruppi con più file vanno verificati con l'hash
+function sizeGroups(list){
+  const by = new Map();
+  for (const it of list){
+    if (!it.size) continue;
+    if (!by.has(it.size)) by.set(it.size, []);
+    by.get(it.size).push(it.name);
+  }
+  return [...by.values()].filter(g => g.length > 1);
+}
+// Nome da conservare: il più corto, a parità il primo in ordine alfabetico
+function pickCanonical(names){
+  return [...names].sort((a, b) => a.length - b.length || (a < b ? -1 : a > b ? 1 : 0))[0];
+}
+function aliasesFromHashGroups(groups){
+  const alias = new Map();
+  for (const names of groups){
+    if (names.length < 2) continue;
+    const canon = pickCanonical(names);
+    for (const n of names) if (n !== canon) alias.set(n, canon);
+  }
+  return alias;
+}
+
+async function dedupeMediaByContent(){
+  if (!current) return;
+  if (!crypto.subtle){ alert("Confronto non disponibile: apri l'app da https."); return; }
+  showOverlay("Lettura archivio media…");
+  try {
+    const list = await mediaMetaList(current.id);
+    const groups = sizeGroups(list);
+    const candidates = groups.reduce((s, g) => s + g.length, 0);
+    if (!candidates){ hideOverlay(); alert("Nessun media duplicato: tutti i file hanno dimensioni diverse."); return; }
+
+    // Verifica per contenuto: hash dei primi 256 KB (identico solo per file identici)
+    const hashGroups = [];
+    let done = 0;
+    for (const g of groups){
+      const byHash = new Map();
+      for (const name of g){
+        showOverlay("Confronto media " + (++done) + "/" + candidates + "…");
+        const rec = await dbGet("media", [current.id, name]);
+        if (!rec || !rec.blob) continue;
+        const part = rec.blob.size > 262144 ? rec.blob.slice(0, 262144) : rec.blob;
+        const key = rec.blob.size + ":" + await sha256Buf(await part.arrayBuffer());
+        if (!byHash.has(key)) byHash.set(key, []);
+        byHash.get(key).push(name);
+      }
+      for (const names of byHash.values()) if (names.length > 1) hashGroups.push(names);
+    }
+    const alias = aliasesFromHashGroups(hashGroups);
+    if (!alias.size){ hideOverlay(); alert("Nessun media duplicato trovato."); return; }
+
+    const bytes = list.filter(it => alias.has(it.name)).reduce((s, it) => s + it.size, 0);
+    hideOverlay();
+    if (!confirm("Trovati " + alias.size + " file duplicati (" + fmtMB(bytes) + ").\n" +
+                 "Verranno uniti: i messaggi punteranno a una sola copia e le copie in eccesso saranno eliminate.")) return;
+    showOverlay("Unione in corso…");
+
+    // I messaggi puntano alla copia conservata
+    for (const m of messages){
+      if (!m.atts || !m.atts.length) continue;
+      m.atts = m.atts.map(a => alias.get(base(a)) || a);
+    }
+    // Elimina le copie in eccesso
+    for (const a of alias.keys()) await dbDel("media", [current.id, a]);
+
+    // I messaggi diventati identici vengono compattati
+    const seen = new Set(), keep = [];
+    let dupMsg = 0;
+    for (const m of messages){
+      const atts = (m.atts || []).map(x => base(x)).sort().join(",");
+      if (atts){
+        const k = msgSig(m) + "|" + atts;
+        if (seen.has(k)){ dupMsg++; continue; }
+        seen.add(k);
+      }
+      keep.push(m);
+    }
+    messages = keep;
+
+    await dbPut("msgs", { id: current.id, list: messages });
+    mediaNames = new Set(await mediaKeys(current.id));
+    clearUrlCache();
+    current.count = messages.length;
+    current.mediaCount = mediaNames.size;
+    await dbPut("chats", current);
+    buildMonths(); refreshPeriod(current); updateHeader();
+    renderWindow(Math.max(0, messages.length - CHUNK), messages.length, null);
+    hideOverlay();
+    toast(alias.size + " file uniti · " + fmtMB(bytes) + " liberati" + (dupMsg ? " · " + dupMsg + " messaggi compattati" : ""));
+  } catch (err){
+    hideOverlay();
+    alert("Errore: " + err.message);
+  }
 }
 
 /* ================= Rendering chat ================= */
@@ -2253,6 +2372,7 @@ function closeStats(){
   $("statsBody").innerHTML = "";
 }
 $("openStats").onclick = () => { closeSheet(); openStats(); };
+$("dedupMedia").onclick = () => { closeSheet(); dedupeMediaByContent(); };
 $("dedupChat").onclick = async () => {
   closeSheet();
   if (!current) return;
