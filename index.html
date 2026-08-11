@@ -229,6 +229,7 @@
   .resTxt{font-size:13.5px;color:var(--muted);margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.4}
 
   /* ---------- Scendi in fondo ---------- */
+  .verBtn{background:none;border:none;color:var(--accent);font:inherit;font-size:11.5px;font-weight:600;text-decoration:underline;padding:6px 4px;margin-top:2px}
   #toBottom{position:fixed;right:16px;bottom:calc(env(safe-area-inset-bottom) + 18px);width:46px;height:46px;border-radius:50%;background:var(--sheet);color:var(--ink);border:1px solid var(--divider);box-shadow:var(--sh-2);z-index:17;display:none;align-items:center;justify-content:center}
   body.inChat #toBottom.show{display:flex}
   #toBottom svg{width:22px;height:22px;fill:currentColor}
@@ -327,6 +328,24 @@
   .stChip b{color:var(--accent);font-weight:700}
   .stNote{font-size:12px;color:var(--muted);padding:8px 16px 0;line-height:1.45}
 
+  /* ---------- Invito all'installazione ---------- */
+  #installSheet{position:fixed;inset:0;z-index:70;background:rgba(8,12,16,.55);display:flex;align-items:flex-end;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+  #installSheet[hidden]{display:none}
+  .isCard{background:var(--sheet);border-radius:var(--r-l) var(--r-l) 0 0;box-shadow:var(--sh-3);padding:26px 22px calc(env(safe-area-inset-bottom) + 20px);width:100%;text-align:center}
+  .isIcon{width:66px;height:66px;border-radius:20px;box-shadow:var(--sh-2);margin-bottom:14px}
+  .isTitle{font-size:19px;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+  .isText{font-size:14px;color:var(--muted);line-height:1.5;margin-top:8px}
+  .isText b{color:var(--ink-2)}
+  .isHow{font-size:13px;color:var(--ink-2);background:var(--field);border-radius:var(--r-s);padding:11px 13px;margin-top:14px;line-height:1.45;text-align:left}
+  .isHow[hidden]{display:none}
+  .isBtns{display:flex;gap:10px;margin-top:20px}
+  .isLater,.isGo{flex:1;border:none;border-radius:14px;padding:14px 12px;font-size:15px;font-weight:600;transition:transform .1s}
+  .isLater{background:var(--field);color:var(--ink-2)}
+  .isGo{background:linear-gradient(160deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 6px 18px rgba(14,159,110,.35)}
+  .isGo[hidden]{display:none}
+  .isLater:active,.isGo:active{transform:scale(.97)}
+  @media (prefers-reduced-motion: no-preference){ #installSheet:not([hidden]) .isCard{animation:sheetIn .3s var(--ease)} }
+
   /* ---------- Overlay ---------- */
   #overlay{position:fixed;inset:0;background:var(--overlay);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;font-size:15px;color:var(--ink);text-align:center;padding:24px}
   #overlay[hidden]{display:none}
@@ -420,7 +439,10 @@
   <button class="mi" id="renameChat">Rinomina chat…</button>
   <button class="mi" id="dedupMedia">Unisci media duplicati (per contenuto)</button>
   <button class="mi" id="dedupChat">Rimuovi messaggi duplicati</button>
-  <div class="sec" style="text-align:right;opacity:.7">v2.5</div>
+  <div class="sec">App</div>
+  <button class="mi" id="installApp">Installa sulla schermata Home</button>
+  <button class="mi" id="checkUpd">Verifica aggiornamenti</button>
+  <div class="sec" style="text-align:right;opacity:.7">v2.7</div>
 </div>
 
 <div class="bar" id="homeSearchBar" hidden>
@@ -437,7 +459,7 @@
     <p>Tocca <b>+</b> e apri il file <b>.zip</b> esportato da WhatsApp (con media) oppure il solo <b>.txt</b>.<br>La chat viene salvata sul dispositivo: da qui in poi la ritrovi sempre in questa lista, media compresi.</p>
     <p style="font-size:12px">WhatsApp → chat → ⋮ → Altro → Esporta chat</p>
   </div>
-  <div id="homeHint">Tutto resta in locale sul tuo dispositivo: nessun dato viene inviato a server. · v2.5</div>
+  <div id="homeHint">Tutto resta in locale sul tuo dispositivo: nessun dato viene inviato a server.<br><button class="verBtn" id="verBtn">v2.7 · verifica aggiornamenti</button></div>
 </div>
 <button id="fab" title="Importa export" aria-label="Importa export"><svg viewBox="0 0 24 24" width="26" height="26" fill="#fff"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg></button>
 
@@ -503,6 +525,19 @@
   <div id="lbMedia"></div>
   <button id="lbGoto" hidden>Mostra nella chat</button>
 </div>
+<div id="installSheet" hidden>
+  <div class="isCard">
+    <img src="icon-192.png" alt="" class="isIcon">
+    <div class="isTitle">Installa l'app</div>
+    <div class="isText">Aggiungi <b>Archivio WhatsApp</b> alla schermata Home: si apre a schermo intero, funziona anche offline e le chat restano salvate sul dispositivo.</div>
+    <div class="isHow" id="installHow" hidden>Apri il menu <b>⋮</b> di Chrome e scegli <b>Installa app</b> (oppure <b>Aggiungi a schermata Home</b>).</div>
+    <div class="isBtns">
+      <button class="isLater" id="installLater">Non ora</button>
+      <button class="isGo" id="installGo">Installa</button>
+    </div>
+  </div>
+</div>
+
 <div id="overlay" hidden><div class="spin"></div><div id="overlayTxt">Caricamento…</div></div>
 
 <input type="file" id="fileInput" accept=".zip,.txt,text/plain,application/zip" hidden>
@@ -2596,10 +2631,97 @@ function toast(t){
   try { db = await openDB(); }
   catch (e){ alert("Archivio non disponibile: " + e.message + "\nApri l'app dal suo indirizzo web (non come file locale)."); return; }
   renderHome();
-  if ("serviceWorker" in navigator){
-    try { navigator.serviceWorker.register("sw.js"); } catch (e){}
-  }
+  setupUpdates();
+  setTimeout(maybeShowInstall, 2200);
 })();
+
+/* ================= Invito all'installazione ================= */
+let installEvt = null;
+const INSTALL_KEY = "waInstallDismissed";
+const isStandalone = () =>
+  (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+function installDismissed(){
+  try { return localStorage.getItem(INSTALL_KEY) === "1"; } catch (e){ return false; }
+}
+function setInstallDismissed(){
+  try { localStorage.setItem(INSTALL_KEY, "1"); } catch (e){}
+}
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  installEvt = e;
+  if (!$("installSheet").hidden){ $("installGo").hidden = false; $("installHow").hidden = true; }
+});
+window.addEventListener("appinstalled", () => {
+  installEvt = null;
+  setInstallDismissed();
+  hideInstall();
+});
+function showInstall(force){
+  if (isStandalone()) { if (force) toast("L'app è già installata"); return; }
+  if (!force && installDismissed()) return;
+  $("installGo").hidden = !installEvt;
+  $("installHow").hidden = !!installEvt;
+  $("installSheet").hidden = false;
+}
+function hideInstall(){ $("installSheet").hidden = true; }
+$("installLater").onclick = () => { setInstallDismissed(); hideInstall(); };
+$("installSheet").addEventListener("click", e => { if (e.target === $("installSheet")) hideInstall(); });
+$("installGo").onclick = async () => {
+  if (!installEvt){ $("installHow").hidden = false; $("installGo").hidden = true; return; }
+  hideInstall();
+  const ev = installEvt;
+  installEvt = null;
+  try {
+    ev.prompt();
+    const res = await ev.userChoice;
+    if (res && res.outcome === "accepted") setInstallDismissed();
+  } catch (err){}
+};
+$("installApp").onclick = () => { closeSheet(); showInstall(true); };
+// Alla prima apertura: attende che Chrome renda disponibile l'installazione
+function maybeShowInstall(){
+  if (isStandalone() || installDismissed() || document.body.classList.contains("inChat")) return;
+  showInstall(false);
+}
+
+/* ================= Aggiornamenti ================= */
+function setupUpdates(){
+  if (!("serviceWorker" in navigator)) return;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloaded) return;
+    reloaded = true;
+    location.reload();
+  });
+  navigator.serviceWorker.register("sw.js").then(reg => {
+    reg.update().catch(() => {});
+    if (reg.waiting) reg.waiting.postMessage("skipWaiting");
+    reg.addEventListener("updatefound", () => {
+      const w = reg.installing || reg.waiting;
+      if (w) w.addEventListener("statechange", () => {
+        if (w.state === "installed" && reg.waiting) reg.waiting.postMessage("skipWaiting");
+      });
+    });
+    setInterval(() => reg.update().catch(() => {}), 1800000);
+  }).catch(() => {});
+}
+// Svuota solo le cache dei file dell'app: l'archivio in IndexedDB non viene toccato
+async function forceUpdate(){
+  showOverlay("Verifica aggiornamenti…\nL'archivio delle chat non viene toccato.");
+  try {
+    if ("serviceWorker" in navigator){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const r of regs) await r.unregister();
+    }
+    if (window.caches){
+      const ks = await caches.keys();
+      for (const k of ks) await caches.delete(k);
+    }
+  } catch (e){}
+  location.replace(location.pathname + "?u=" + Date.now());
+}
+if ($("verBtn")) $("verBtn").onclick = forceUpdate;
+if ($("checkUpd")) $("checkUpd").onclick = () => { closeSheet(); forceUpdate(); };
 </script>
 </body>
 </html>
