@@ -291,10 +291,33 @@
   .stBig{font-size:24px;font-weight:700;letter-spacing:-.03em;color:var(--ink);font-variant-numeric:tabular-nums}
   .stLab{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.35}
   .stRow{display:flex;align-items:center;gap:10px;padding:6px 16px;font-size:13.5px}
-  .stRow .rl{width:80px;flex:0 0 auto;color:var(--ink-2);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stRow .rl{width:108px;flex:0 0 auto;color:var(--ink-2);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .stRow .rb{flex:1;height:18px;background:var(--field);border-radius:999px;overflow:hidden}
   .stRow .rf{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:999px}
   .stRow .rv{width:64px;text-align:right;flex:0 0 auto;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+  .stReadout{font-size:12.5px;color:var(--muted);padding:2px 16px 0;min-height:18px}
+  .stReadout b{color:var(--ink);font-weight:650}
+  .stCols div.on{opacity:1;box-shadow:0 0 0 2px var(--accent-soft);background:linear-gradient(180deg,#fff,var(--accent))}
+  .stCols div{cursor:pointer}
+  #stRange{background:var(--home);border-bottom:1px solid var(--divider);padding:10px 12px}
+  .stPills{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+  .stPills::-webkit-scrollbar{display:none}
+  .stPill{flex:0 0 auto;background:var(--field);color:var(--muted);border:none;border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;white-space:nowrap;transition:background .16s,color .16s}
+  .stPill.on{background:var(--accent);color:#fff}
+  .stCustom{display:flex;align-items:center;gap:8px;padding-top:10px}
+  .stCustom[hidden]{display:none}
+  .stCustom input{flex:1;min-width:0;border:none;border-radius:12px;padding:9px 10px;font-size:13.5px;background:var(--field);color:var(--ink)}
+  .stCustom .arrow{color:var(--muted);font-size:13px}
+  .stCustom .small{background:var(--accent);color:#fff;border:none;border-radius:12px;padding:9px 14px;font-size:13.5px;font-weight:600}
+  .stList{padding:6px 16px 2px}
+  .stItem{padding:11px 0 13px;border-bottom:1px solid var(--divider)}
+  .stItem:last-child{border-bottom:none}
+  .stItemTop{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:14px}
+  .stItemTop b{font-weight:650;color:var(--ink)}
+  .stItemTop span{font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .stItemSub{font-size:12.5px;color:var(--muted);margin:3px 0 9px}
+  .stItem .rb{height:8px;background:var(--field);border-radius:999px;overflow:hidden}
+  .stItem .rf{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:999px}
   .stCols{display:flex;align-items:flex-end;gap:3px;height:118px;padding:10px 14px 0}
   .stCols div{flex:1;background:linear-gradient(180deg,var(--accent),var(--accent-2));border-radius:5px 5px 3px 3px;min-height:3px;opacity:.9}
   .stColsLab{display:flex;gap:3px;padding:6px 14px 0;font-size:9.5px;color:var(--muted)}
@@ -396,7 +419,7 @@
   <button class="mi" id="addMedia">Aggiungi media…</button>
   <button class="mi" id="renameChat">Rinomina chat…</button>
   <button class="mi" id="dedupChat">Rimuovi messaggi duplicati</button>
-  <div class="sec" style="text-align:right;opacity:.7">v2.1</div>
+  <div class="sec" style="text-align:right;opacity:.7">v2.4</div>
 </div>
 
 <div class="bar" id="homeSearchBar" hidden>
@@ -413,7 +436,7 @@
     <p>Tocca <b>+</b> e apri il file <b>.zip</b> esportato da WhatsApp (con media) oppure il solo <b>.txt</b>.<br>La chat viene salvata sul dispositivo: da qui in poi la ritrovi sempre in questa lista, media compresi.</p>
     <p style="font-size:12px">WhatsApp → chat → ⋮ → Altro → Esporta chat</p>
   </div>
-  <div id="homeHint">Tutto resta in locale sul tuo dispositivo: nessun dato viene inviato a server. · v2.1</div>
+  <div id="homeHint">Tutto resta in locale sul tuo dispositivo: nessun dato viene inviato a server. · v2.4</div>
 </div>
 <button id="fab" title="Importa export" aria-label="Importa export"><svg viewBox="0 0 24 24" width="26" height="26" fill="#fff"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg></button>
 
@@ -453,6 +476,15 @@
     <div style="flex:1;min-width:0">
       <div id="galTitle" style="font-size:17px;font-weight:600">Statistiche</div>
       <div id="stSub" style="font-size:12px;opacity:.82"></div>
+    </div>
+  </div>
+  <div id="stRange">
+    <div class="stPills" id="stPills"></div>
+    <div class="stCustom" id="stCustom" hidden>
+      <input type="date" id="stFromI" aria-label="Dal">
+      <span class="arrow">→</span>
+      <input type="date" id="stToI" aria-label="Al">
+      <button class="small" id="stApply">Applica</button>
     </div>
   </div>
   <div id="statsBody"></div>
@@ -1908,11 +1940,60 @@ function galDocRow(it){
 }
 
 /* ================= Statistiche ================= */
-const STOPWORDS = new Set(("a ad ai al alla alle allo agli anche ancora aver avere avevo c ce che chi ci cioè co coi col come con cosa cui da dai dal dalla dalle dallo degli dei del della delle dello di dopo dove e ed ecco ei era erano essere fa fare fatto fino fra gli grazie ha hai hanno ho i il in io la le lei li lo loro lui ma mai me mi mia mie miei mio molto ne nei nel nella nelle nello no noi non nostro o od ogni oggi oltre ora per perché però più po po' poi presso qua quale quali quando quanto quel quella quelle quelli quello questa queste questi questo qui sarà se sei senza si sia siamo sono sto su sua sue sui sul sulla sulle suo ta te ti tra tu tua tue tuo tutti tutto un una uno va vai vi voi vuoi stai sta sto stiamo state stanno stato stata stati fai faccio fatto dire detto dico dici posso puoi puo deve devo devi vado vado andare venire visto vista dai eh ahah ahahah boh mah cioe è ok si no ecc pure quindi cmq perche piu").split(" "));
-function computeStats(){
+const deacc = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const STOPWORDS = new Set(("" +
+  "a ad ai al alla alle allo agli da dai dal dalla dalle dallo degli dei del della delle dello " +
+  "di in nei nel nella nelle nello su sui sul sulla sulle sullo per con senza tra fra presso verso " +
+  "e ed o od ma pero anche neanche nemmeno neppure invece oppure quindi dunque allora percio " +
+  "perche comunque cioe ossia mentre appena finche affinche benche sebbene nonostante siccome " +
+  "il lo la i gli le un uno una un' " +
+  "io tu lui lei noi voi loro me te se ne ci vi mi ti si lo la li le gli glielo gliela " +
+  "questo questa questi queste quello quella quelli quelle quel quei quegli quest cio " +
+  "mio mia miei mie tuo tua tuoi tue suo sua suoi sue nostro nostra nostri nostre vostro vostra vostri vostre " +
+  "che chi cui cosa quale quali quando quanto quanta quanti quante come dove " +
+  "ogni ognuno qualche qualcosa qualcuno alcuni alcune niente nulla nessuno nessuna " +
+  "tutto tutta tutti tutte stesso stessa stessi stesse altro altra altri altre tale tali " +
+  "essere sono sei siamo siete era ero eri erano eravamo eravate stato stata stati state " +
+  "sara saro saranno saremo sarei sarebbe sia siano fosse fossi fossero " +
+  "avere ho hai ha abbiamo avete hanno avevo avevi aveva avevamo avevate avevano " +
+  "avro avra avrai avremo avranno avrei avrebbe avuto abbia abbiano avessi avesse " +
+  "fare faccio fai fa facciamo fate fanno facevo faceva facevano fatto fara faro farei farebbe " +
+  "dire dico dici dice diciamo dite dicono dicevo diceva detto dira diro direi " +
+  "andare vado vai va andiamo andate vanno andavo andava andato andra andro " +
+  "venire vengo vieni viene veniamo venite vengono veniva venuto verra verro " +
+  "potere posso puoi puo possiamo potete possono potevo poteva potuto potrei potrebbe potra " +
+  "dovere devo devi deve dobbiamo dovete devono dovevo doveva dovuto dovrei dovrebbe dovra " +
+  "volere voglio vuoi vuole vogliamo volete vogliono volevo voleva voluto vorrei vorrebbe " +
+  "stare sto stai sta stiamo state stanno stavo stava stavano stara staro starei " +
+  "vedere vedo vedi vede vediamo vedete vedono vedevo vedeva visto vedra vedro " +
+  "sapere so sai sa sappiamo sapete sanno sapevo sapeva saputo sapra sapro " +
+  "dare do dai da diamo date danno dato dava " +
+  "poi prima dopo ancora sempre mai adesso ora oggi ieri domani subito gia ormai " +
+  "molto molti molte poco pochi poche troppo troppi tanto tanti tante piu meno " +
+  "cosi proprio solo soltanto appunto infatti insomma almeno circa quasi magari forse " +
+  "davvero veramente praticamente assolutamente sicuramente probabilmente semplicemente " +
+  "sopra sotto dentro fuori dietro davanti oltre insieme anziche invece " +
+  "bene male meglio peggio grazie prego scusa scusami certo certamente ecco ecc " +
+  "ok okay boh mah beh vabbe eh ahah ahahah hahaha ahaha ahahaha " +
+  "no non si nessun qualsiasi qualunque " +
+  "cmq perche' piu' pero' cioe' pu' xche xk cmnq nn ").trim().split(/\s+/).map(deacc));
+const LAUGH_RE = /^(?:a*h+a*){2,}$/;
+function dayNumOf(m, dm){
+  return Math.floor(Date.UTC(m.y, (dm === "dmy" ? m.d2 : m.d1) - 1, (dm === "dmy" ? m.d1 : m.d2)) / 86400000);
+}
+function computeStats(from, to){
   const dm = dateMode;
-  const real = messages.filter(m => m.sender);
+  const all = messages.filter(m => m.sender);
+  const real = (from == null && to == null) ? all : all.filter(m => {
+    const n = dayNumOf(m, dm);
+    return (from == null || n >= from) && (to == null || n <= to);
+  });
   const dt = m => new Date(m.y, (dm === "dmy" ? m.d2 : m.d1) - 1, (dm === "dmy" ? m.d1 : m.d2), m.hh, +m.mi);
+  const chatFirst = all.length ? dayNumOf(all[0], dm) : null;
+  const chatLast = all.length ? dayNumOf(all[all.length - 1], dm) : null;
+  const rF = chatFirst == null ? null : Math.max(from == null ? chatFirst : from, chatFirst);
+  const rL = chatLast == null ? null : Math.min(to == null ? chatLast : to, chatLast);
+  const spanDays = (rF == null || rL == null || rL < rF) ? 0 : (rL - rF + 1);
   const perSender = new Map(), years = new Map(), hours = new Array(24).fill(0),
         wdays = new Array(7).fill(0), days = new Map(), words = new Map(), emojis = new Map();
   let mediaN = 0, wordN = 0, charN = 0;
@@ -1930,7 +2011,12 @@ function computeStats(){
       charN += m.text.length;
       const toks = m.text.toLowerCase().match(/[\p{L}\p{N}']{3,}/gu) || [];
       wordN += toks.length;
-      for (const t of toks) if (!STOPWORDS.has(t)) words.set(t, (words.get(t) || 0) + 1);
+      for (const t of toks){
+        if (!/\p{L}/u.test(t)) continue;
+        const k = deacc(t.replace(/'+$/, ""));
+        if (STOPWORDS.has(k) || LAUGH_RE.test(k)) continue;
+        words.set(t, (words.get(t) || 0) + 1);
+      }
       const em = m.text.match(EMO);
       if (em) for (const e of em) emojis.set(e, (emojis.get(e) || 0) + 1);
     }
@@ -1946,19 +2032,31 @@ function computeStats(){
   }
   const median = arr => { if (!arr.length) return null; const s = [...arr].sort((a, b) => a - b); const n = s.length;
     return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
-  // giorni consecutivi
-  const dayNums = [...days.keys()].map(k => { const [y, mo, dd] = k.split("-").map(Number);
-    return Math.floor(Date.UTC(y, mo - 1, dd) / 86400000); }).sort((a, b) => a - b);
-  let streak = dayNums.length ? 1 : 0, run = 1;
-  for (let i = 1; i < dayNums.length; i++){
-    if (dayNums[i] === dayNums[i - 1] + 1){ run++; streak = Math.max(streak, run); } else run = 1;
+  // strisce di giorni consecutivi, con estremi e messaggi di ciascuna
+  const dayCount = new Map();
+  for (const [k, v] of days){
+    const [y, mo, dd] = k.split("-").map(Number);
+    dayCount.set(Math.floor(Date.UTC(y, mo - 1, dd) / 86400000), v);
   }
-  let topDay = null, topDayN = 0;
-  for (const [k, v] of days) if (v > topDayN){ topDayN = v; topDay = k; }
+  const nums = [...dayCount.keys()].sort((a, b) => a - b);
+  const runs = [];
+  if (nums.length){
+    let s0 = nums[0], prev = nums[0], msgs = dayCount.get(nums[0]);
+    for (let i = 1; i < nums.length; i++){
+      if (nums[i] === prev + 1){ prev = nums[i]; msgs += dayCount.get(nums[i]); }
+      else { runs.push({ start: s0, end: prev, len: prev - s0 + 1, msgs });
+             s0 = nums[i]; prev = nums[i]; msgs = dayCount.get(nums[i]); }
+    }
+    runs.push({ start: s0, end: prev, len: prev - s0 + 1, msgs });
+  }
+  const topStreaks = runs.sort((a, b) => b.len - a.len || b.msgs - a.msgs).slice(0, 3);
+  const streak = topStreaks.length ? topStreaks[0].len : 0;
+  const topDays = [...days.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
   const topN = (map, n) => [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
   return { total: real.length, perSender: topN(perSender, 12), years: [...years.entries()].sort((a, b) => a[0] - b[0]),
-    hours, wdays, mediaN, wordN, charN, activeDays: days.size, streak,
-    topDay, topDayN, topWords: topN(words, 12), topEmoji: topN(emojis, 10),
+    hours, wdays, mediaN, wordN, charN, activeDays: days.size, streak, topStreaks,
+    spanDays, chatFirst, chatLast, rangeFrom: rF, rangeTo: rL,
+    topDays, topWords: topN(words, 14), topEmoji: topN(emojis, 10),
     resp: [...resp.entries()].map(([s, a]) => [s, median(a)]),
     first: real.length ? dt(real[0]) : null, last: real.length ? dt(real[real.length - 1]) : null };
 }
@@ -1973,45 +2071,166 @@ function bars(list, fmtVal){
   }
   return html;
 }
-function cols(arr, labels){
+function cols(arr, labels, kind, roId){
   const max = Math.max(1, ...arr);
-  let h1 = '<div class="stCols">', h2 = '<div class="stColsLab">';
+  let h1 = '<div class="stCols" data-kind="' + kind + '" data-ro="' + roId + '">', h2 = '<div class="stColsLab">';
   arr.forEach((v, i) => {
-    h1 += '<div style="height:' + Math.max(2, Math.round(v / max * 100)) + '%" title="' + v + '"></div>';
+    h1 += '<div style="height:' + Math.max(3, Math.round(v / max * 100)) + '%"></div>';
     h2 += "<span>" + (labels[i] != null ? labels[i] : "") + "</span>";
   });
-  return h1 + "</div>" + h2 + "</div>";
+  return '<div class="stReadout" id="' + roId + '">Tocca una colonna per vedere il valore</div>' +
+         h1 + "</div>" + h2 + "</div>";
+}
+const WDAY_FULL = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"];
+let statsData = null;
+$("statsBody").addEventListener("click", e => {
+  const col = e.target.closest(".stCols > div");
+  if (!col || !statsData) return;
+  const wrap = col.parentElement;
+  const i = [...wrap.children].indexOf(col);
+  const kind = wrap.dataset.kind;
+  const arr = kind === "hours" ? statsData.hours : statsData.wdays;
+  const v = arr[i] || 0;
+  const tot = arr.reduce((a, b) => a + b, 0) || 1;
+  const label = kind === "hours"
+    ? "Tra le " + i + ":00 e le " + ((i + 1) % 24) + ":00"
+    : cap(WDAY_FULL[i]);
+  for (const d of wrap.children) d.classList.remove("on");
+  col.classList.add("on");
+  const ro = document.getElementById(wrap.dataset.ro);
+  if (ro) ro.innerHTML = "<b>" + label + "</b> · " + v.toLocaleString("it-IT") +
+    " messaggi · " + (v / tot * 100).toFixed(1) + "%";
+});
+
+let stFrom = null, stTo = null, stLabel = "Tutto";
+const DAYMS = 86400000;
+const numToISO = n => new Date(n * DAYMS).toISOString().slice(0, 10);
+const isoToNum = s => { const [y, m, d] = s.split("-").map(Number); return Math.floor(Date.UTC(y, m - 1, d) / DAYMS); };
+
+function buildRangePills(){
+  const all = messages.filter(m => m.sender);
+  if (!all.length) return;
+  const dm = dateMode;
+  const cF = dayNumOf(all[0], dm), cL = dayNumOf(all[all.length - 1], dm);
+  const opts = [["Tutto", null, null]];
+  for (const [lab, d] of [["30 giorni", 29], ["3 mesi", 89], ["6 mesi", 179], ["12 mesi", 364]])
+    if (cL - d > cF) opts.push([lab, cL - d, cL]);
+  const years = [...new Set(all.map(m => m.y))].sort((a, b) => b - a);
+  for (const y of years)
+    opts.push([String(y), Math.floor(Date.UTC(y, 0, 1) / DAYMS), Math.floor(Date.UTC(y, 11, 31) / DAYMS)]);
+  const box = $("stPills");
+  box.innerHTML = "";
+  for (const [lab, f, t] of opts){
+    const b = document.createElement("button");
+    b.className = "stPill" + (lab === stLabel ? " on" : "");
+    b.textContent = lab;
+    b.onclick = () => {
+      stFrom = f; stTo = t; stLabel = lab;
+      $("stCustom").hidden = true;
+      for (const el of box.children) el.classList.toggle("on", el === b);
+      renderStats();
+    };
+    box.appendChild(b);
+  }
+  const cb = document.createElement("button");
+  cb.className = "stPill" + (stLabel === "Personalizzato" ? " on" : "");
+  cb.textContent = "Personalizzato…";
+  cb.onclick = () => {
+    const c = $("stCustom");
+    c.hidden = !c.hidden;
+    if (!c.hidden){
+      $("stFromI").value = numToISO(stFrom != null ? stFrom : cF);
+      $("stToI").value = numToISO(stTo != null ? stTo : cL);
+      $("stFromI").min = numToISO(cF); $("stFromI").max = numToISO(cL);
+      $("stToI").min = numToISO(cF); $("stToI").max = numToISO(cL);
+    }
+  };
+  box.appendChild(cb);
+  $("stApply").onclick = () => {
+    const a = $("stFromI").value, b2 = $("stToI").value;
+    if (!a || !b2) return;
+    let f = isoToNum(a), t = isoToNum(b2);
+    if (f > t){ const s0 = f; f = t; t = s0; }
+    stFrom = f; stTo = t; stLabel = "Personalizzato";
+    for (const el of box.children) el.classList.toggle("on", el === cb);
+    $("stCustom").hidden = true;
+    renderStats();
+  };
 }
 
 function openStats(){
   if (!current) return;
   closeBars();
-  const s = computeStats();
-  $("stSub").textContent = current.name;
+  stFrom = null; stTo = null; stLabel = "Tutto";
+  $("stCustom").hidden = true;
+  buildRangePills();
+  renderStats();
+  document.body.classList.add("inStats");
+  history.pushState({ stats: current.id }, "");
+}
+
+function renderStats(){
+  const s = computeStats(stFrom, stTo);
+  statsData = s;
+  const dOptS = { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" };
+  const rangeTxt = s.rangeFrom != null && s.spanDays
+    ? new Date(s.rangeFrom * DAYMS).toLocaleDateString("it-IT", dOptS) + " – " +
+      new Date(s.rangeTo * DAYMS).toLocaleDateString("it-IT", dOptS)
+    : "";
+  $("stSub").textContent = current.name + (stLabel === "Tutto" ? "" : " · " + stLabel);
+  if (!s.total){
+    $("statsBody").innerHTML = '<div class="galEmpty">Nessun messaggio nel periodo selezionato</div>';
+    return;
+  }
   const dOpt = { day: "numeric", month: "short", year: "numeric" };
   const dayFmt = k => { const [y, mo, dd] = k.split("-").map(Number);
-    return new Date(y, mo - 1, dd).toLocaleDateString("it-IT", dOpt); };
+    const d = new Date(y, mo - 1, dd);
+    return cap(WDAY_FULL[(d.getDay() + 6) % 7].slice(0, 3)) + " " + d.toLocaleDateString("it-IT", dOpt); };
   const mins = v => v == null ? "–" : (v < 60 ? Math.round(v) + " min" : (v / 60).toFixed(1) + " h");
+  const perDay = s.total && s.activeDays ? Math.round(s.total / s.activeDays) : 0;
   let html = '<div class="stCards">' +
-    '<div class="stCard"><div class="stBig">' + s.total.toLocaleString("it-IT") + '</div><div class="stLab">messaggi</div></div>' +
-    '<div class="stCard"><div class="stBig">' + s.mediaN.toLocaleString("it-IT") + '</div><div class="stLab">media inviati</div></div>' +
+    '<div class="stCard"><div class="stBig">' + s.total.toLocaleString("it-IT") + '</div><div class="stLab">messaggi in totale</div></div>' +
+    '<div class="stCard"><div class="stBig">' + s.mediaN.toLocaleString("it-IT") + '</div><div class="stLab">foto, video e vocali</div></div>' +
     '<div class="stCard"><div class="stBig">' + s.wordN.toLocaleString("it-IT") + '</div><div class="stLab">parole scritte</div></div>' +
-    '<div class="stCard"><div class="stBig">' + s.activeDays.toLocaleString("it-IT") + '</div><div class="stLab">giorni con messaggi</div></div>' +
-    '<div class="stCard"><div class="stBig">' + s.streak + '</div><div class="stLab">giorni consecutivi (record)</div></div>' +
-    '<div class="stCard"><div class="stBig">' + (s.total && s.activeDays ? Math.round(s.total / s.activeDays) : 0) +
-      '</div><div class="stLab">media al giorno attivo</div></div>' +
+    '<div class="stCard"><div class="stBig">' + s.activeDays.toLocaleString("it-IT") + '</div><div class="stLab">giorni in cui vi siete scritti</div></div>' +
+    '<div class="stCard"><div class="stBig">' + (s.spanDays ? Math.round(s.activeDays / s.spanDays * 100) : 0) +
+      '%</div><div class="stLab">dei giorni del periodo con almeno un messaggio</div></div>' +
+    '<div class="stCard"><div class="stBig">' + s.streak + '</div><div class="stLab">giorni di fila, record</div></div>' +
+    '<div class="stCard"><div class="stBig">' + perDay.toLocaleString("it-IT") + '</div><div class="stLab">messaggi al giorno, quando vi scrivete</div></div>' +
     "</div>";
-  if (s.first && s.last)
-    html += '<div class="stNote">Dal ' + s.first.toLocaleDateString("it-IT", dOpt) +
-            " al " + s.last.toLocaleDateString("it-IT", dOpt) + "</div>";
+  html += '<div class="stNote">Periodo considerato: ' + rangeTxt + " (" +
+          s.spanDays.toLocaleString("it-IT") + " giorni) · attivi " +
+          s.activeDays.toLocaleString("it-IT") + " giorni su " + s.spanDays.toLocaleString("it-IT") + ".</div>";
   html += '<div class="stSec">Chi scrive di più</div>' + bars(s.perSender);
-  if (s.topDay)
-    html += '<div class="stNote">Giorno record: ' + dayFmt(s.topDay) + " · " + s.topDayN.toLocaleString("it-IT") + " messaggi</div>";
+  if (s.topDays.length){
+    html += '<div class="stSec">I tre giorni più intensi</div>' +
+      bars(s.topDays.map(([k, v]) => [dayFmt(k), v]));
+  }
+  if (s.topStreaks.length){
+    const fromNum = n => new Date(n * 86400000);
+    const optNoY = { day: "numeric", month: "short", timeZone: "UTC" };
+    const optY = { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" };
+    const rangeLabel = (a, b) => {
+      const da = fromNum(a), db = fromNum(b);
+      if (a === b) return db.toLocaleDateString("it-IT", optY);
+      const sameY = da.getUTCFullYear() === db.getUTCFullYear();
+      return da.toLocaleDateString("it-IT", sameY ? optNoY : optY) + " – " + db.toLocaleDateString("it-IT", optY);
+    };
+    const maxLen = s.topStreaks[0].len;
+    html += '<div class="stSec">Le tre strisce più lunghe senza salti</div><div class="stList">';
+    s.topStreaks.forEach((r, i) => {
+      html += '<div class="stItem"><div class="stItemTop"><b>' + (i + 1) + "° · " + r.len.toLocaleString("it-IT") +
+        (r.len === 1 ? " giorno" : " giorni") + ' di fila</b><span>' + r.msgs.toLocaleString("it-IT") + " messaggi</span></div>" +
+        '<div class="stItemSub">' + rangeLabel(r.start, r.end) + "</div>" +
+        '<div class="rb"><div class="rf" style="width:' + Math.round(r.len / maxLen * 100) + '%"></div></div></div>';
+    });
+    html += "</div>";
+  }
   if (s.years.length) html += '<div class="stSec">Messaggi per anno</div>' + bars(s.years);
   html += '<div class="stSec">Fasce orarie</div>' +
-    cols(s.hours, s.hours.map((_, i) => i % 3 === 0 ? i : ""));
+    cols(s.hours, s.hours.map((_, i) => i % 3 === 0 ? i : ""), "hours", "roHours");
   html += '<div class="stSec">Giorni della settimana</div>' +
-    cols(s.wdays, ["lun", "mar", "mer", "gio", "ven", "sab", "dom"]);
+    cols(s.wdays, ["lun", "mar", "mer", "gio", "ven", "sab", "dom"], "wdays", "roWdays");
   if (s.resp.length){
     html += '<div class="stSec">Tempo di risposta (mediana)</div>' + bars(s.resp, mins);
     html += '<div class="stNote">Calcolato sulle risposte entro 8 ore.</div>';
@@ -2024,13 +2243,11 @@ function openStats(){
   if (s.topWords.length){
     html += '<div class="stSec">Parole più usate</div><div class="stChips">';
     for (const [w, n] of s.topWords) html += '<div class="stChip">' + esc(w) + " <b>" + n.toLocaleString("it-IT") + "</b></div>";
-    html += "</div>";
+    html += '</div><div class="stNote">Escluse le parole di servizio (articoli, preposizioni, congiunzioni, verbi comuni e risate).</div>';
   }
   $("statsBody").innerHTML = html;
   $("statsBody").scrollTop = 0;
-  document.body.classList.add("inStats");
-  history.pushState({ stats: current.id }, "");
-}
+  }
 function closeStats(){
   document.body.classList.remove("inStats");
   $("statsBody").innerHTML = "";
